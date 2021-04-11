@@ -1,3 +1,5 @@
+use itertools::{self, sorted};
+
 pub struct Sudoku {
     pub data: Vec<Vec<u32>>,
 }
@@ -26,10 +28,8 @@ impl Sudoku {
     }
 
     fn is_len_invalid(&self) -> bool {
-        self.data
-            .iter()
-            .map(|arr| arr.len())
-            .any(|len| len != self.data.len())
+        let mut lens = self.data.iter().map(|arr| arr.len());
+        lens.any(|len| len != self.data.len())
     }
 
     pub fn horizontal_seq(&self, i: usize) -> Vec<u32> {
@@ -39,15 +39,10 @@ impl Sudoku {
     pub fn vertical_seq(&self, j: usize) -> Vec<u32> {
         (0..self.data.len()).map(|i| self.data[i][j]).collect()
     }
-
     pub fn square_seq(&self, i_origin: usize, j_origin: usize) -> Vec<u32> {
-        let mut vec: Vec<u32> = vec![];
-        for i in i_origin..i_origin + self.sqrt_len() {
-            for j in j_origin..j_origin + self.sqrt_len() {
-                vec.push(self.data[i][j]);
-            }
-        }
-        return vec;
+        (i_origin..i_origin + self.sqrt_len())
+            .flat_map(|i| self.data[i][j_origin..j_origin + self.sqrt_len()].to_vec())
+            .collect()
     }
 
     pub fn sqrt_len(&self) -> usize {
@@ -56,14 +51,5 @@ impl Sudoku {
 }
 
 pub fn seq_is_valid(seq: Vec<u32>) -> bool {
-    let mut temp = seq.to_vec();
-    temp.sort();
-
-    for i in 0..seq.len() {
-        if temp[i] != (i + 1) as u32 {
-            return false;
-        }
-    }
-
-    return true;
+    (1..=seq.len() as u32).collect::<Vec<_>>() == sorted(seq).collect::<Vec<_>>()
 }

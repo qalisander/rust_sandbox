@@ -1,5 +1,4 @@
-use rust_lab::sudoku;
-use sudoku::Sudoku;
+use rust_lab::sudoku::Sudoku;
 
 #[test]
 fn good_sudoku() {
