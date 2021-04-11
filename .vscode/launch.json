@@ -1,0 +1,59 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug",
+            "program": "${workspaceFolder}/target/debug/${workspaceFolderBasename}",
+            "args": [],
+            "sourceLanguages": [
+                "rust"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "rust: cargo build"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Test",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                ],
+                "filter": {
+                    "name": "libthat",
+                    "kind": "lib"
+                }
+            },
+            "args": ["${selectedText}"],
+            "sourceLanguages": [
+                "rust"
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "rust: cargo build"
+        },
+
+        /* {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug selected unit test",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                ],
+                "filter": {
+                    "name": "libthat",
+                    "kind": "lib"
+                }
+            },
+            "args": ["${selectedText}"],
+            "cwd": "${workspaceFolder}"
+        }, */
+    ]
+}
