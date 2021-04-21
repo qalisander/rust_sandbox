@@ -9,7 +9,7 @@ pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
     // TODO: recursive iterators in Rust https://fasterthanli.me/articles/recursive-iterators-rust
 
     // TODO: use size - 2, not x = -2
-    for (x, y) in spiralize_rec(-2, 0, 1, 0, size as isize + 1) {
+    for (x, y) in spiralize_rec((-2, 0), (1, 0), size as isize + 1) {
         spiral[y as usize][x as usize] = 1;
     }
 
