@@ -16,10 +16,8 @@ pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
     return spiral;
 
     fn spiralize_rec(
-        x: isize, // TODO: use tuples
-        y: isize,
-        dx: isize, // tuples
-        dy: isize,
+        ind: (isize, isize),
+        d_ind: (isize, isize),
         l: isize,
     ) -> impl Iterator<Item = (isize, isize)> {
         // TODO: why we can't use it without box
@@ -27,19 +25,17 @@ pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
         return if l <= 0 {
             vec![].into_iter()
         } else if l == 1 {
-            vec![(x + dx, y + dy)].into_iter()
+            vec![(ind.0 + d_ind.0, ind.1 + d_ind.1)].into_iter()
         } else {
             (1..=l)
                 .map(|i| {
-                    (x + i * dx, y + i * dy) // BUG
+                    (ind.0 + i * d_ind.0, ind.1 + i * d_ind.1) // BUG
                 })
                 .filter(|p| p.0 >= 0 && p.1 >= 0)
                 .chain(spiralize_rec(
-                    x + dx * l,
-                    y + dy * l,
-                    -dy,
-                    dx,
-                    if dy == 0 { l - 2 } else { l },
+                    (ind.0 + d_ind.0 * l, ind.1 + d_ind.1 * l),
+                    (-d_ind.1, d_ind.0),
+                    if d_ind.1 == 0 { l - 2 } else { l },
                 ))
                 .collect::<Vec<(isize, isize)>>()
                 .into_iter()
