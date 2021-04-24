@@ -1,5 +1,7 @@
 pub mod sudoku;
-pub mod sudoku1;
-pub mod sudoku2;
+pub mod sudoku_1;
+pub mod sudoku_3;
 pub mod spiral;
-pub mod spiral2;
+pub mod spiral_2;
+pub mod common_denominators;
+pub mod common_denominators_2;
