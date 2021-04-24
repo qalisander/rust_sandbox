@@ -1,5 +1,3 @@
-use itertools;
-
 fn convert_fracts(input: Vec<(i64, i64)>) -> Vec<(i64, i64)> {
     let input_nrml = input
         .into_iter()
