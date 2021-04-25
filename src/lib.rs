@@ -5,3 +5,4 @@ pub mod spiral;
 pub mod spiral_2;
 pub mod common_denominators;
 pub mod common_denominators_2;
+pub mod path_finder;

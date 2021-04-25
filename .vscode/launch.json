@@ -1,7 +1,9 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // How to add launch
+    // - generate launch
+    // - add prebuild task ("build")
+    // - change name like "run and build" (to avoid name collision with rust-analyzer)
+    // - add arguments
     "version": "0.2.0",
     "configurations": [
         {

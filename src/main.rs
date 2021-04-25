@@ -1,17 +1,10 @@
-use itertools;
-
 fn main() {
-    let v1 = vec![1, 2, 3, 4, 5];
-    let v2 = vec![1, 2, 3, 4, 5];
-
-    // v1.iter().enumerate()
-
-    for v in &v1 {
-        println!("{}", v);
-    }
-
-    for v in v1.into_iter() {
-        println!("{}", v);
-    }
-    // print!("{}", v1 == v2);
+    println!("{}", -11_isize.rem_euclid(10))
 }
+// // Functional approach
+// let sum_of_squared_odd_numbers: u32 = (0..)
+//     .map(|n| n * n) // All natural numbers squared
+//     .take_while(|&n_squared| n_squared < upper) // Below upper limit
+//     .filter(|&n_squared| is_odd(n_squared)) // That are odd
+//     .fold(0, |acc, n_squared| acc + n_squared); // Sum them
+// println!("functional style: {}", sum_of_squared_odd_numbers);

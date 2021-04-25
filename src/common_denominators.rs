@@ -7,10 +7,7 @@ fn convert_fracts(input: Vec<(i64, i64)>) -> Vec<(i64, i64)> {
         })
         .collect::<Vec<_>>();
 
-    let common_denominator = input_nrml
-        .iter()
-        .map(|tpl| tpl.1)
-        .fold(1,|x, y| lcm(x, y));
+    let common_denominator = input_nrml.iter().map(|tpl| tpl.1).fold(1, |x, y| lcm(x, y));
 
     input_nrml
         .into_iter()
@@ -38,30 +35,35 @@ fn gcf(x: i64, y: i64) -> i64 {
     }
 }
 
-#[test]
-fn basics_convert_fracts() {
-    testing(
-        vec![(69, 130), (87, 1310), (3, 4)],
-        vec![(18078, 34060), (2262, 34060), (25545, 34060)],
-    );
-    testing(
-        vec![(690, 1300), (87, 1310), (30, 40)],
-        vec![(18078, 34060), (2262, 34060), (25545, 34060)],
-    );
+#[cfg(test)]
+mod test {
+    use super::*;
+    
+    #[test]
+    fn basics_convert_fracts() {
+        testing(
+            vec![(69, 130), (87, 1310), (3, 4)],
+            vec![(18078, 34060), (2262, 34060), (25545, 34060)],
+        );
+        testing(
+            vec![(690, 1300), (87, 1310), (30, 40)],
+            vec![(18078, 34060), (2262, 34060), (25545, 34060)],
+        );
 
-    fn testing(l: Vec<(i64, i64)>, exp: Vec<(i64, i64)>) -> () {
-        assert_eq!(convert_fracts(l), exp)
+        fn testing(l: Vec<(i64, i64)>, exp: Vec<(i64, i64)>) -> () {
+            assert_eq!(convert_fracts(l), exp)
+        }
     }
-}
 
-#[test]
-fn lowest_common_mult_test() {
-    assert_eq!(gcf(17, 13), 1);
-    assert_eq!(gcf(8, 18), 2);
-    assert_eq!(gcf(1300, 1310), 10);
-}
+    #[test]
+    fn lowest_common_mult_test() {
+        assert_eq!(gcf(17, 13), 1);
+        assert_eq!(gcf(8, 18), 2);
+        assert_eq!(gcf(1300, 1310), 10);
+    }
 
-#[test]
-fn greatest_common_factor_test() {
-    assert_eq!(lcm(1300, 1310), 170300)
+    #[test]
+    fn greatest_common_factor_test() {
+        assert_eq!(lcm(1300, 1310), 170300)
+    }
 }
