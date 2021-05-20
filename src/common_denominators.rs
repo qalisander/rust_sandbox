@@ -38,7 +38,7 @@ fn gcf(x: i64, y: i64) -> i64 {
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
     #[test]
     fn basics_convert_fracts() {
         testing(
