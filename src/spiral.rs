@@ -19,7 +19,6 @@ pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
         return if l <= 0 {
             Box::new(std::iter::empty())
         } else if l == 1 {
-            // vec![(ind.0 + d_ind.0, ind.1 + d_ind.1)]
             Box::new(std::iter::once((ind.0 + d_ind.0, ind.1 + d_ind.1)))
         } else {
             Box::new(

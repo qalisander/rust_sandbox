@@ -29,7 +29,7 @@
 			],
 			"group": {
 				"kind": "test",
-				// "isDefault": true
+				"isDefault": true
 			},
 			"label": "rust: cargo test"
 		},
@@ -48,7 +48,7 @@
 			],
 			"group": {
 				"kind": "test",
-				"isDefault": true
+				// "isDefault": true
 			},
 			"label": "rust: cargo module test"
 		}
