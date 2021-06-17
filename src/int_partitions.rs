@@ -5,6 +5,7 @@ use itertools::Itertools;
 // https://www.codewars.com/kata/55cf3b567fc0e02b0b00000b/train/rust
 
 fn part(n: i64) -> String {
+    
     // TODO: use hash map instead of that kind of array, Option<vec> - brrrrr
     // memo
     let mut memory= HashMap::new();
@@ -16,24 +17,29 @@ fn part(n: i64) -> String {
         ans.median()
     );
 
-    fn part_rec(arg: usize, memory: &mut HashMap<usize, Vec<i32>>) -> & Vec<i32>{
-        if let Some(vec) = memory.get(&arg){
-            return vec;
-        }
+    fn part_rec(arg: usize, memory: &mut HashMap<usize, Vec<i32>>) -> Vec<i32>{
+        unimplemented!();
 
-        let mut closure =  |i| {
-            part_rec(arg - 1, memory).iter().map(|x| (x * (i as i32)))};
+        // if let Some(vct) = memory.get(&arg) {
+        //     return *vct;
+        // }
 
-        let vec = std::iter::once(arg as i32)
-        .chain(
-            (1..arg / 2)
-                .flat_map(closure)
-                .unique()
-        )
-        .collect();
-        memory.insert(arg.clone(), vec);
-        memory.get(&arg).unwrap()
+        // let mut closure =  |i| {
+        //     part_rec(arg - 1, memory).iter().map(|x| (x * (i as i32)))};
 
+        // let vec = std::iter::once(arg as i32)
+        // .chain(
+        //     (1..arg / 2)
+        //         .flat_map(closure)
+        //         .unique()
+        // )
+        // .collect();
+        // return vec;
+
+        //----------------------------------------------
+
+        // memory.insert(arg.clone(), vec);
+        // memory.get(&arg).unwrap()
 
         // match memory.get(&arg) {
         //     Some(vec) => &vec,
@@ -78,7 +84,7 @@ impl VecExt for Vec<i32> {
 
 #[test]
 fn returns_expected() {
-    testequal(&part(1), "Range: 0 Average: 1.00 Median: 1.00");
+    testequal(&part(1), "Range: 0 Average: Å1.00 Median: 1.00");
     testequal(&part(2), "Range: 1 Average: 1.50 Median: 1.50");
     testequal(&part(3), "Range: 2 Average: 2.00 Median: 2.00");
     testequal(&part(4), "Range: 3 Average: 2.50 Median: 2.50");

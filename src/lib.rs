@@ -8,3 +8,4 @@ pub mod common_denominators_2;
 pub mod path_finder;
 pub mod int_partitions_number;
 pub mod int_partitions;
+pub mod operation_on_sequences;
