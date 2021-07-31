@@ -1,5 +1,3 @@
-use std::iter::{Once, Repeat};
-
 pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
     let mut spiral = (0..size)
         .map(|_| vec![0 as i8; size])

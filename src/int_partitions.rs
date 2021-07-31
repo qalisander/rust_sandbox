@@ -1,6 +1,4 @@
-use std::collections::{HashMap, hash_map};
-
-use itertools::Itertools;
+use std::collections::{HashMap};
 
 // https://www.codewars.com/kata/55cf3b567fc0e02b0b00000b/train/rust
 
