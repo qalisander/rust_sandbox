@@ -3,7 +3,7 @@ use itertools::Itertools;
 fn dec2_fact_string(nb: u64) -> String {
     let mut num: u64 = nb;
 
-    (0..=100).rfold(String::new(), |mut ans, pow| {
+    (0..=50).rfold(String::new(), |mut ans, pow| {
         let fact = saturating_fact(pow);
         if num > fact {// TODO: when fact is 0
             // TODO: rewrite with map and option
@@ -16,7 +16,7 @@ fn dec2_fact_string(nb: u64) -> String {
 
         // TODO: append zero
         ans
-    }).trim_matches('0').into()
+    }).trim_start_matches('0').into()
 }
 
 fn fact_string_2dec(s: String) -> u64 { 
