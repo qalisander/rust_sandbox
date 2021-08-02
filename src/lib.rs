@@ -9,3 +9,4 @@ pub mod path_finder;
 pub mod int_partitions_number;
 pub mod int_partitions;
 pub mod operation_on_sequences;
+mod decimal_to_factorial_and_back;
