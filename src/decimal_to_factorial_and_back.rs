@@ -1,20 +1,15 @@
-use itertools::Itertools;
-
 fn dec2_fact_string(nb: u64) -> String {
     let mut num: u64 = nb;
 
     (0..=50).rfold(String::new(), |mut ans, pow| {
         let fact = saturating_fact(pow);
-        if num > fact {// TODO: when fact is 0
-            // TODO: rewrite with map and option
-            let (delta, factor) = (0..fact).map(|i| (i * fact, i)).filter(|&i| i.0 <= num).last().unwrap();
-            ans.push_str(factor.to_string().as_str());
-            num -= delta;
+        if num >= fact {
+            let i = (1..=pow).filter(|i| i * fact <= num).last().unwrap_or(0);
+            ans.push(char::from_digit(i as u32, 36).unwrap().to_ascii_uppercase());
+            num -= i * fact;
         } else {
             ans.push_str("0")
         }
-
-        // TODO: append zero
         ans
     }).trim_start_matches('0').into()
 }
@@ -22,11 +17,11 @@ fn dec2_fact_string(nb: u64) -> String {
 fn fact_string_2dec(s: String) -> u64 { 
     s.chars().rev().enumerate()
         .fold(0, |acc, (index, ch)| 
-            acc + ch.to_digit(10).unwrap() as u64 * saturating_fact(index as u64))
+            acc + ch.to_digit(36).unwrap() as u64 * saturating_fact(index as u64))
 }
 
 
-fn saturating_fact(num: u64) -> u64{
+fn saturating_fact(num: u64) -> u64 {
     (1..=num).reduce(|x, y| x.saturating_mul(y)).unwrap_or(1)
 }
 
@@ -39,6 +34,7 @@ fn factorial_test(){
 fn basics_dec2_fact_string() {
     testing1(2982, "4041000");
     testing1(463, "341010");
+    testing1(36288000, "A0000000000");
     
     fn testing1(nb: u64, exp: &str) -> () {
         assert_eq!(&dec2_fact_string(nb), exp)
