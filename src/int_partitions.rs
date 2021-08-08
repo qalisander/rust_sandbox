@@ -69,6 +69,7 @@ fn testequal(ans: &str, sol: &str) {
 }
 
 // Shortest solution:
+
 // fn sub(n: i64, m: i64) -> Vec<i64> {
 //     if m == 1 { return vec![1]; }
 //     (0..=n/m).flat_map(|p| {
