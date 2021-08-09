@@ -4,7 +4,7 @@ use std::collections::HashMap;
 // https://www.codewars.com/kata/55cf3b567fc0e02b0b00000b/train/rust
 fn part(n: i64) -> String {
     let mut memory = HashMap::new();
-    let ans = part_rec(n as usize, &mut memory);
+    let ans = part_rec(n as usize, &mut memory).to_vec();
     return format!(
         "Range: {} Average: {:.2} Median: {:.2}",
         ans.range(),
@@ -12,22 +12,30 @@ fn part(n: i64) -> String {
         ans.median()
     );
 
-    fn part_rec(arg: usize, memory: &mut HashMap<usize, Vec<i32>>) -> Vec<i32> {
-        if let Some(vct) = memory.get(&arg) {
-            return vct.to_vec();
-        }
+    fn part_rec(arg: usize, memory: &mut HashMap<usize, Box<[i32]>>) -> Box<[i32]> {
+        // if let Some(vct) = memory.get(&arg) {
+        //     return vct;
+        // }
 
-        let vec = std::iter::once(arg as i32)
+        std::iter::once(arg as i32)
             .chain((1..=arg / 2)
                 .flat_map(|i| {
-                    part_rec(&arg - i, memory).iter().map(|x| (x * (i as i32))).collect_vec()
+                    let prev_i = &arg - i;
+
+                    let slice = if let Some(slice) = memory.get(&prev_i) {
+                        slice
+                    } else {
+                        let slice = part_rec(prev_i, memory);
+                        memory.entry(prev_i).or_insert(slice)
+                    };
+                    // let slice = memory.entry(arg).or_insert(part_rec(&arg - i, memory));
+                    // slice.iter().map(|x| (x * (i as i32))).collect_vec()
+                    slice.iter().map(|x| (x * (i as i32))).collect_vec()
                 }))
             .unique()
             .sorted()
-            .collect_vec();
-
-        memory.insert(arg, vec);
-        return memory.get(&arg).unwrap().to_vec();
+            .collect_vec()
+            .into_boxed_slice()
     }
 }
 
@@ -37,7 +45,7 @@ trait VecExt {
     fn median(&self) -> f64;
 }
 
-impl VecExt for Vec<i32> {
+impl VecExt for Vec<i32>{
     fn range(&self) -> f64 {
         *self.iter().max().unwrap() as f64 - *self.iter().min().unwrap() as f64
     }
