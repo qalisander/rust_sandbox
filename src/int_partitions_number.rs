@@ -69,4 +69,20 @@ mod tests {
     }
 }
 
+// fastest solution
+// pub fn partitions(n: isize) -> isize {
+//     if n < 0 {
+//         return 0;
+//     }
+//     let n = n as usize;
+//     let mut caches = vec![0isize;n+1];
+//     caches[0] = 1isize;
+//     for i in 1..=n {
+//         for j in i..=n {
+//             caches[j] += caches[j-i];
+//         }
+//     }
+//     caches[n]
+// }
+
     
