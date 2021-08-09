@@ -1,13 +1,8 @@
 use itertools::Itertools;
 
 fn main() {
-    // let vct = (1..=3/2) .collect_vec();
-    // println!("{:?}", vct)
-
-    let data = vec![4, 3, 2, 1, 4];
-    let unique = data.into_iter().unique().collect_vec();
-    itertools::assert_equal(unique, vec![4, 3, 2, 1])
-    
+    let vct = (1..=3/2) .collect_vec();
+    println!("{:?}", vct)
 }
 
 // struct Solution;
