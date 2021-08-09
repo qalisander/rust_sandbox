@@ -13,24 +13,17 @@ fn part(n: i64) -> String {
     );
 
     fn part_rec(arg: usize, memory: &mut HashMap<usize, Box<[i32]>>) -> Box<[i32]> {
-        // if let Some(vct) = memory.get(&arg) {
-        //     return vct;
-        // }
-
         std::iter::once(arg as i32)
             .chain((1..=arg / 2)
-                .flat_map(|i| {
-                    let prev_i = &arg - i;
+                .flat_map(|index| {
+                    let prev_index = &arg - index;
 
-                    let slice = if let Some(slice) = memory.get(&prev_i) {
+                    if let Some(slice) = memory.get(&prev_index) {
                         slice
                     } else {
-                        let slice = part_rec(prev_i, memory);
-                        memory.entry(prev_i).or_insert(slice)
-                    };
-                    // let slice = memory.entry(arg).or_insert(part_rec(&arg - i, memory));
-                    // slice.iter().map(|x| (x * (i as i32))).collect_vec()
-                    slice.iter().map(|x| (x * (i as i32))).collect_vec()
+                        let slice = part_rec(prev_index, memory);
+                        memory.entry(prev_index).or_insert(slice)
+                    }.iter().map(move |x| (x * (index as i32))).collect_vec()
                 }))
             .unique()
             .sorted()
