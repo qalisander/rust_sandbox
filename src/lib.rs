@@ -13,3 +13,4 @@ pub mod int_partitions;
 pub mod operation_on_sequences;
 mod decimal_to_factorial_and_back;
 mod rail_fence_cipher;
+mod fix_pipes;
