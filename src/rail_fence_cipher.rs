@@ -1,7 +1,5 @@
 // https://www.codewars.com/kata/58c5577d61aefcf3ff000081/train/rust
 
-use itertools::Itertools;
-
 fn encode_rail_fence_cipher(text: &str, num_rails: usize) -> String {
     (0..num_rails).flat_map(|rail_id| {
          text.chars().enumerate().filter_map(move |(id, ch)| {
@@ -20,20 +18,20 @@ fn decode_rail_fence_cipher(text: &str, num_rails: usize) -> String {
     let period = num_rails - 1;
     let mut id = 0;
     let mut rail_id = 0;
-    
-    text.chars().map(|ch| {
+
+    let mut ans = vec![' '; text.len()];
+
+    for ch in text.chars() {
         if id >= text.len() {
             rail_id += 1;
             id = rail_id;
         }
 
-        let ans = (id, ch);
+        ans[id] = ch;
         id = (id / period + 2) * period - id % period;
-        ans
-    })
-        .inspect(|tpl| println!("{:?}", tpl))
-        .sorted_by_key(|(id, ch)| *id)
-        .map(|(_, ch)| ch).collect::<String>()
+    }
+    
+    ans.iter().collect()
 }
 
 #[cfg(test)]
