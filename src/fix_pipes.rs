@@ -2,34 +2,24 @@ use itertools::Itertools;
 
 struct Tile {
     ch: char,
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
 }
 
 impl Tile {
-    fn can_move_to(&self, tile: Tile) -> bool {
-        unimplemented!()
+    pub fn can_move_to(&self, tile: Tile) -> bool {
+        self.can_move_to_dir(tile.x - self.x, tile.y - self.y)
     }
     
-    fn can_move_to_dir(ch: char, (dx, dy) : (isize, isize)) -> bool {
-        //      | 
-        //      |          
-        // -----|----->    
-        //      |     (x)  
-        //      V (y)              
-        match ch {
-            '┃' | '┣' => dx == 0 || dy.abs() == 1,             
-            '━' | '┳' | '┻' => dx.abs() == 1 || dy == 0,                   
-            '┛' => (-1, 0) == (dx, dy) || (0, -1) == (dx, dy), 
-            '┗' => (1, 0) == (dx, dy) || (0, -1) == (dx, dy),  
-            '┓' => (-1, 0) == (dx, dy) || (0, 1) == (dx, dy),  
-            '┏' => (1, 0) == (dx, dy) || (0, 1) == (dx, dy),
-            // '┳' => can_move_to('━', (dx, dy)),
-            // '┻' => ,
-            // '┫' => ,
-            // '┣' => ,
-            // '╋' => ,
-            _ => unimplemented!(),
+    fn can_move_to_dir(&self, dx: isize, dy: isize) -> bool {      
+        match self.ch {
+            '┃' | '┣' | '┫' | '╋' if dx == 0 || dy.abs() == 1 => true,       //      |      
+            '━' | '┳' | '┻' | '╋' if dx.abs() == 1 || dy == 0 => true,       //      |                     
+            '┛' | '┫' if (-1, 0) == (dx, dy) || (0, -1) == (dx, dy) => true, // -----|----->    
+            '┗' | '┻' if (1, 0) == (dx, dy) || (0, -1) == (dx, dy) => true,  //      |     (x)  
+            '┓' | '┳' if (-1, 0) == (dx, dy) || (0, 1) == (dx, dy) => true,  //      V (y)              
+            '┏' | '┣' if (1, 0) == (dx, dy) || (0, 1) == (dx, dy) => true,
+            _ => false,
         }
     }
 }
