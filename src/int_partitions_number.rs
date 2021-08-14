@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap};
 
-// TODO: compare with criterion: BTreeMap, HashMap
+// TODO: compare with criterion lib: BTreeMap, HashMap
 fn partitions(num: isize) -> isize {
     let mut memory = HashMap::new();
     return part_rec(num, num, &mut memory);

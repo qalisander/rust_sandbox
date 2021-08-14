@@ -46,7 +46,7 @@ impl Sudoku {
     }
 
     fn sqrt_len(&self) -> usize {
-        (self. data.len() as f32).sqrt() as usize
+        (self.data.len() as f32).sqrt() as usize
     }
 }
 

@@ -6,7 +6,7 @@ pub struct Sudoku {
 
 impl Sudoku {
     pub fn is_valid(&self) -> bool {
-        fn check_range<'a, I: Iterator<Item=&'a u32>>(n: usize, i: I) -> bool {
+        fn check_range<'a, I: Iterator<Item = &'a u32>>(n: usize, i: I) -> bool {
             let mut vals: Vec<u32> = i.map(|x| *x).collect();
             vals.sort();
             (1..n as u32 + 1).collect::<Vec<_>>() == vals
@@ -15,14 +15,20 @@ impl Sudoku {
         let dim = self.data.len();
         let n = (dim as f32).sqrt() as usize;
         // Check dimension
-        if self.data.iter().map(|row| row.len()).any(|l| l != dim) { return false; }
+        if self.data.iter().map(|row| row.len()).any(|l| l != dim) {
+            return false;
+        }
         // Check row
         for r in self.data.iter() {
-            if !check_range(dim, r.iter()) { return false; }
+            if !check_range(dim, r.iter()) {
+                return false;
+            }
         }
         // Check column
         for i in 0..dim {
-            if !check_range(dim, (0..dim).map(|j| &self.data[j][i])) { return false; }
+            if !check_range(dim, (0..dim).map(|j| &self.data[j][i])) {
+                return false;
+            }
         }
         // Check cubes
         for sx in 0..n {
@@ -33,7 +39,9 @@ impl Sudoku {
                         cube.push(self.data[sx * n + x][sy * n + y]);
                     }
                 }
-                if !check_range(dim, cube.iter()) { return false; }
+                if !check_range(dim, cube.iter()) {
+                    return false;
+                }
             }
         }
         true

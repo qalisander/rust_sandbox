@@ -1,7 +1,7 @@
 use rust_lab::sudoku::Sudoku;
 
 #[test]
-  fn good_sudoku() {
+fn good_sudoku() {
     let good_sudoku_1 = Sudoku {
         data: vec![
             vec![7, 8, 4, 1, 5, 9, 3, 2, 6],
