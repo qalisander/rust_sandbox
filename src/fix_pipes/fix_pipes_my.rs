@@ -1,10 +1,10 @@
 use itertools::Itertools;
-use std::ops::{Add, Neg, Sub};
 use std::fmt::{Display, Formatter};
+use std::ops::{Add, Neg, Sub};
 // https://www.codewars.com/kata/59f81fe146d84322ed00001e
 
 #[derive(Debug, Copy, Clone)]
-struct  Tile {
+struct Tile {
     symbol: char,
     is_visited: bool,
 }
@@ -28,32 +28,50 @@ impl Tile {
 struct Point(isize, isize);
 
 impl Point {
-    fn get_all_nearest(self) -> impl Iterator<Item=Point> {
-        [(-1, 0), (1, 0), (0, -1), (0, 1)].iter().map(move |&(dx, dy)| Point(dx, dy) + self)
+    fn get_all_nearest(self) -> impl Iterator<Item = Point> {
+        [(-1, 0), (1, 0), (0, -1), (0, 1)]
+            .iter()
+            .map(move |&(dx, dy)| Point(dx, dy) + self)
     }
 }
 
 impl Sub for Point {
     type Output = Self;
 
-    fn sub(self, other: Self) -> Self::Output { Point(self.0 - other.0, self.1 - other.1) }
+    fn sub(self, other: Self) -> Self::Output {
+        Point(self.0 - other.0, self.1 - other.1)
+    }
 }
 
 impl Add for Point {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self::Output { Point(self.0 + other.0, self.1 + other.1) }
+    fn add(self, other: Self) -> Self::Output {
+        Point(self.0 + other.0, self.1 + other.1)
+    }
 }
 
-struct PipeChecker{
-    map: Vec<Vec<Tile>>
+struct PipeChecker {
+    map: Vec<Vec<Tile>>,
 }
 
 impl Display for PipeChecker {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str = self.map.iter().flat_map(|vec| vec.iter().map(|tile| { 
-            if tile.is_visited { "*".to_string() } else { tile.symbol.to_string() }
-        }).chain(std::iter::once("\n".to_string()))).collect::<String>();
+        let str = self
+            .map
+            .iter()
+            .flat_map(|vec| {
+                vec.iter()
+                    .map(|tile| {
+                        if tile.is_visited {
+                            "*".to_string()
+                        } else {
+                            tile.symbol.to_string()
+                        }
+                    })
+                    .chain(std::iter::once("\n".to_string()))
+            })
+            .collect::<String>();
         write!(f, "{}", str)
     }
 }
@@ -61,15 +79,21 @@ impl Display for PipeChecker {
 impl PipeChecker {
     fn new(pipe_map: &[&str]) -> PipeChecker {
         Self {
-            map: pipe_map.iter().map(|slice| {
-                slice.chars().map(|ch| Tile {
-                    symbol: ch,
-                    is_visited: false,
-                }).collect::<Vec<Tile>>()
-            }).collect_vec()
+            map: pipe_map
+                .iter()
+                .map(|slice| {
+                    slice
+                        .chars()
+                        .map(|ch| Tile {
+                            symbol: ch,
+                            is_visited: false,
+                        })
+                        .collect::<Vec<Tile>>()
+                })
+                .collect_vec(),
         }
     }
-    
+
     fn check(&mut self) -> bool {
         for y in 0..self.map.len() {
             for x in 0..self.map[0].len() {
@@ -81,8 +105,13 @@ impl PipeChecker {
 
                 let mut is_old_pipe = true;
                 let mut is_leak_detected = false;
-                self.check_rec(current_point, current_tile, &mut is_old_pipe, &mut is_leak_detected);
-                if is_leak_detected && !is_old_pipe { 
+                self.check_rec(
+                    current_point,
+                    current_tile,
+                    &mut is_old_pipe,
+                    &mut is_leak_detected,
+                );
+                if is_leak_detected && !is_old_pipe {
                     return false;
                 }
             }
@@ -90,7 +119,13 @@ impl PipeChecker {
         return true;
     }
 
-    fn check_rec(&mut self, current_point: Point, current_tile: Tile, is_old_pipe: &mut bool, is_leak_detected: &mut bool) {
+    fn check_rec(
+        &mut self,
+        current_point: Point, // NOTE: join point and tile in same struct
+        current_tile: Tile,
+        is_old_pipe: &mut bool,
+        is_leak_detected: &mut bool,
+    ) {
         for nearest in current_point.get_all_nearest() {
             if current_tile.can_move_to_dir(nearest - current_point) {
                 match self.take_tile(nearest) {
@@ -112,18 +147,19 @@ impl PipeChecker {
             }
         }
     }
-    
+
     fn take_tile(&mut self, Point(x, y): Point) -> Option<&mut Tile> {
-        let in_bounds = x >= 0 && x < self.map[0].len() as isize && y >= 0 && y < self.map.len() as isize;
-        if in_bounds { 
+        let in_bounds =
+            x >= 0 && x < self.map[0].len() as isize && y >= 0 && y < self.map.len() as isize;
+        if in_bounds {
             Some(&mut self.map[y as usize][x as usize])
-        } else { 
+        } else {
             None
         }
     }
 }
 
-fn check_pipe(pipe_map: &[&str]) -> bool {
+pub fn check_pipe(pipe_map: &[&str]) -> bool {
     let mut checker = PipeChecker::new(pipe_map);
     println!("Before:\n{}", checker);
     let ans = checker.check();
@@ -134,7 +170,7 @@ fn check_pipe(pipe_map: &[&str]) -> bool {
 
 #[cfg(test)]
 mod sample_tests {
-    
+
     #[test]
     fn small_fixed_tests() {
         for (pmap, answer) in TEST_CASES {
