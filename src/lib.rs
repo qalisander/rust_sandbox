@@ -12,3 +12,4 @@ mod rail_fence_cipher;
 pub mod spiral;
 pub mod spiral_2;
 pub mod sudoku;
+pub mod spiral;
