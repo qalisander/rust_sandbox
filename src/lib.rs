@@ -9,7 +9,6 @@ pub mod int_partitions_number;
 pub mod operation_on_sequences;
 pub mod path_finder;
 mod rail_fence_cipher;
-pub mod spiral;
-pub mod spiral_2;
+mod n_queens_challenge_version;
 pub mod sudoku;
 pub mod spiral;
