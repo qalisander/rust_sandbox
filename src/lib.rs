@@ -13,3 +13,4 @@ mod n_queens_challenge_version;
 pub mod sudoku;
 pub mod spiral;
 mod three_pass_compiler;
+mod simple_interactive_interpreter;
