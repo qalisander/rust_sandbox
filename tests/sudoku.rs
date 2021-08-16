@@ -1,4 +1,4 @@
-use rust_lab::sudoku::Sudoku;
+use rust_lab::sudoku::sudoku::*;
 
 #[test]
 fn good_sudoku() {
@@ -6,7 +6,7 @@ fn good_sudoku() {
         data: vec![
             vec![7, 8, 4, 1, 5, 9, 3, 2, 6],
             vec![5, 3, 9, 6, 7, 2, 8, 4, 1],
-            vec![6, 1, 1, 4, 3, 8, 7, 5, 9],
+            vec![6, 1, 2, 4, 3, 8, 7, 5, 9],
             vec![9, 2, 8, 7, 1, 5, 4, 6, 3],
             vec![3, 5, 7, 8, 4, 6, 1, 9, 2],
             vec![4, 6, 1, 9, 2, 3, 5, 8, 7],
