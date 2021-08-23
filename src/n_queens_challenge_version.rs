@@ -1,7 +1,34 @@
 // https://www.codewars.com/kata/5985ea20695be6079e000003/train/rust
 
+use std::fmt::{Display, Formatter};
+use itertools::Itertools;
+
+struct Queen(usize, usize);
+
+struct Chessboard(Vec<Queen>, usize); // TODO: prlly turn into slice with lifetime specifier
+
+impl Display for Chessboard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Chessboard(queens, size) = self;
+        let str = queens.iter()
+            .sorted_by_key(|Queen(x, y)| y)
+            .flat_map(|Queen(x, y)| {
+                let mut row = vec!['.'; *size];
+                row[*x] = 'Q';
+                row.into_iter()
+            }).collect::<String>();
+        write!(f, "Chessboard is:\n{}", str)
+    }
+}
+
 pub fn solve_n_queens(n: usize, mandatory_coords: (usize, usize)) -> Option<String> {
+    let initial_queens_pos = get_initial_pos(n, mandatory_coords);
+    
     todo!();
+}
+
+fn get_initial_pos(n: usize, mandatory_queen: (usize, usize)) -> Vec<Queen> {
+    todo!()
 }
 
 #[cfg(test)]
