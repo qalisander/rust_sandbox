@@ -15,7 +15,7 @@ impl Display for Chessboard {
             .flat_map(|Queen(x, y)| {
                 let mut row = vec!['.'; *size];
                 row[*x] = 'Q';
-                row.into_iter()
+                row.into_iter().chain(std::iter::once('\n'))
             }).collect::<String>();
         write!(f, "Chessboard is:\n{}", str)
     }
@@ -34,7 +34,14 @@ fn get_initial_pos(n: usize, mandatory_queen: (usize, usize)) -> Vec<Queen> {
 #[cfg(test)]
 mod tests {
     use super::solve_n_queens;
+    use crate::n_queens_challenge_version::{Queen, Chessboard};
 
+    #[test]
+    fn smoke_test() {
+        let queens = vec![Queen(0, 0), Queen(1,1), Queen(2, 2), Queen(3, 3)];
+        println!("{}", Chessboard(queens, 4));
+    }
+    
     #[test]
     fn basic_tests() {
         let basic_tests = vec![(8, (3, 0)), (4, (2, 0)), (1, (0, 0))];
