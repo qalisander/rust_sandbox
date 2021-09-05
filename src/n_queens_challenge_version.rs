@@ -10,36 +10,39 @@ struct Chessboard(Vec<Queen>, usize); // TODO: prlly turn into slice with lifeti
 impl Display for Chessboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let Chessboard(queens, size) = self;
-        let str = queens.iter()
-            .sorted_by_key(|Queen(x, y)| y)
-            .flat_map(|Queen(x, y)| {
-                let mut row = vec!['.'; *size];
-                row[*x] = 'Q';
-                row.into_iter().chain(std::iter::once('\n'))
-            }).collect::<String>();
-        write!(f, "Chessboard is:\n{}", str)
+        writeln!(f, "Chessboard is:")?;
+        for Queen(x, y) in queens.iter().sorted_by_key(|Queen(x, y)| y) {
+            writeln!(f, "{}{}{}", ".".repeat(*x), "Q", ".".repeat(*size - x - 1))?;
+        }
+        writeln!(f)
     }
 }
 
 pub fn solve_n_queens(n: usize, mandatory_coords: (usize, usize)) -> Option<String> {
-    let initial_queens_pos = get_initial_pos(n, mandatory_coords);
+    let initial_queens_pos = get_initial_chessboard(n, Queen(mandatory_coords.0, mandatory_coords.1));
     
     todo!();
 }
 
-fn get_initial_pos(n: usize, mandatory_queen: (usize, usize)) -> Vec<Queen> {
+fn get_initial_chessboard(n: usize, mandatory_queen: Queen) -> Chessboard {
     todo!()
 }
 
 #[cfg(test)]
 mod tests {
     use super::solve_n_queens;
-    use crate::n_queens_challenge_version::{Queen, Chessboard};
+    use crate::n_queens_challenge_version::{Queen, Chessboard, get_initial_chessboard};
 
     #[test]
     fn smoke_test() {
         let queens = vec![Queen(0, 0), Queen(1,1), Queen(2, 2), Queen(3, 3)];
         println!("{}", Chessboard(queens, 4));
+    }
+
+    #[test]
+    fn initial_chessboard_test(){
+        let chessboard = get_initial_chessboard(14, Queen(10, 3));
+        println!("{}", chessboard);
     }
     
     #[test]
