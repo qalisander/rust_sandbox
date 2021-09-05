@@ -15,3 +15,4 @@ pub mod spiral;
 mod three_pass_compiler;
 mod simple_interactive_interpreter;
 mod test_frameworks_test;
+mod nonogram_solver_5to5;
