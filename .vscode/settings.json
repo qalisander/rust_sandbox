@@ -1,5 +1,0 @@
-{
-    "rustTestExplorer.rootCargoManifestFilePath": "/Cargo.toml",
-    "rustTestExplorer.logpanel": false,
-    "rust-analyzer.inlayHints.enable": true
-}
