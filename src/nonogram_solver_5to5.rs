@@ -32,34 +32,23 @@ fn solve_nonogram((top_clues, left_clues): ([&[u8]; 5], [&[u8]; 5])) -> [[u8; 5]
 //TODO: pass here arr with len: u8
 //TODO: pay attention to boundaries between clues (there is at least one space between them)
 //TODO: write get_permutations_test
-fn get_permutations(clues: &'static [u8], len: u8) -> Vec<Vec<u8>> {
+
+fn get_permutations<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
     if clues.is_empty() {
-        return vec![vec![]];
+        return Box::new(std::iter::once(Box::new([0; N])));
     }
 
-    let current_clue = clues.first().expect("Clues are not empty");
-    let sum_of_others: u8 = clues.iter().skip(1).sum();
+    let current_clue = *clues.first().unwrap() as usize;
 
-    //TODO: anyway here will get empty vector, prlly remove check on line 25
-    (0_u8..=(len - current_clue - sum_of_others))
-        .map(move |offset| {
-            get_permutations(&clues[1..], len - current_clue - offset)
-                .into_iter()
-                .inspect(|x| println!("offset: {}; len: {}; permutations: {:?};", offset, len, x))
-                .flat_map(move |perm| {
-                    let zeroes = std::iter::repeat(0_u8).take(offset as usize);
-                    let ones = std::iter::repeat(1_u8).take(*current_clue as usize);
-                    let current_clue_position = zeroes.chain(ones);
-                    current_clue_position.chain(perm.into_iter())
+    Box::new((0..=N - init_offset - clues.iter().sum::<u8>() as usize)
+        .flat_map(move |offset| {
+            let offset = init_offset + offset;
+            get_permutations(&clues[1..], offset + current_clue)
+                .map(move |mut slice| {
+                    slice.iter_mut().skip(offset).take(current_clue).for_each(|mut item| *item = 1);
+                    slice
                 })
-                .collect_vec()
-        })
-        .inspect(|x| {
-            if x.len() != len as usize {
-                eprintln!("x.len() is: {}, but len is: {}", x.len(), len)
-            }
-        })
-        .collect_vec()
+        }))
 }
 
 fn print(field: &[[u8; 5]; 5]) {
@@ -75,7 +64,7 @@ mod basic_tests {
 
     #[test]
     fn get_permutations_test() {
-        let permutations = get_permutations(&[1, 2], 5);
+        let permutations: Vec<Box<[u8; 5]>> = get_permutations(&[1, 2], 0).collect_vec();
         dbg!(permutations);
     }
 
