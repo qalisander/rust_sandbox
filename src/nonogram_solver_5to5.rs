@@ -17,8 +17,6 @@ fn solve_nonogram((top_clues, left_clues): ([&[u8]; 5], [&[u8]; 5])) -> [[u8; 5]
         todo!("validate recursion");
     }
 
-
-
     let mut field = [[0u8; 5]; 5];
     print(&field);
 
@@ -43,10 +41,11 @@ fn get_permutations(clues: &'static [u8], len: u8) -> Vec<Vec<u8>> {
     let sum_of_others: u8 = clues.iter().skip(1).sum();
 
     //TODO: anyway here will get empty vector, prlly remove check on line 25
-    (0_u8..(len - current_clue - sum_of_others))
+    (0_u8..=(len - current_clue - sum_of_others))
         .map(move |offset| {
             get_permutations(&clues[1..], len - current_clue - offset)
                 .into_iter()
+                .inspect(|x| println!("offset: {}; len: {}; permutations: {:?};", offset, len, x))
                 .flat_map(move |perm| {
                     let zeroes = std::iter::repeat(0_u8).take(offset as usize);
                     let ones = std::iter::repeat(1_u8).take(*current_clue as usize);
@@ -54,6 +53,11 @@ fn get_permutations(clues: &'static [u8], len: u8) -> Vec<Vec<u8>> {
                     current_clue_position.chain(perm.into_iter())
                 })
                 .collect_vec()
+        })
+        .inspect(|x| {
+            if x.len() != len as usize {
+                eprintln!("x.len() is: {}, but len is: {}", x.len(), len)
+            }
         })
         .collect_vec()
 }
@@ -68,9 +72,9 @@ fn print(field: &[[u8; 5]; 5]) {
 #[cfg(test)]
 mod basic_tests {
     use super::*;
-    
+
     #[test]
-    fn get_permutations_test(){
+    fn get_permutations_test() {
         let permutations = get_permutations(&[1, 2], 5);
         dbg!(permutations);
     }
