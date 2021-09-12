@@ -59,24 +59,15 @@ fn print(field: &[[u8; 5]; 5]) {
     );
 }
 
-fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>) 
-    -> impl Iterator<Item=impl Iterator<Item=T>>
+fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>)
+                       -> impl Iterator<Item=impl Iterator<Item=T>>
 {
     let mut iters = matrix.into_iter()
         .map(|iter| iter.into_iter()).collect_vec(); // TODO: inte_iter() type is asent. Bug
-    let mut vec_vec: Vec<Vec<T>> = vec![vec![]; iters.len()];
 
-    'outer: for i in 0.. {
-        for iter  in iters.iter_mut(){
-            match iter.next() {
-                Some(val) => {
-                    vec_vec[i].push(val);
-                }
-                None => break 'outer,
-            };
-        }
-    };
-    vec_vec.into_iter().map(|vec| vec.into_iter())
+    (0..iters.len()).map(move |_| {
+        iters.iter_mut().filter_map(|iter| iter.next()).collect_vec().into_iter()
+    })
 }
 
 #[cfg(test)]
@@ -84,12 +75,12 @@ mod basic_tests {
     use super::*;
 
     #[test]
-    fn transpose_test(){
+    fn transpose_test() {
         let vec_vec = transpose(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]])
             .map(|iter| iter.collect_vec()).collect_vec();
         println!("{:?}", vec_vec);
     }
-    
+
     #[test]
     fn get_permutations_test() {
         let permutations: Vec<Box<[u8; 15]>> = get_permutations(&[1, 2, 3, 1], 0).collect_vec();
