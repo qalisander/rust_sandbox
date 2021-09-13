@@ -32,34 +32,24 @@ fn solve_nonogram((top_clues, left_clues): ([&[u8]; 5], [&[u8]; 5])) -> [[u8; 5]
 //TODO: pass here arr with len: u8
 //TODO: pay attention to boundaries between clues (there is at least one space between them)
 //TODO: write get_permutations_test
-fn get_permutations(clues: &'static [u8], len: u8) -> Vec<Vec<u8>> {
+
+fn get_permutations<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
     if clues.is_empty() {
-        return vec![vec![]];
+        return Box::new(std::iter::once(Box::new([0; N])));
     }
 
-    let current_clue = clues.first().expect("Clues are not empty");
-    let sum_of_others: u8 = clues.iter().skip(1).sum();
+    let current_clue = *clues.first().unwrap() as usize;
 
-    //TODO: anyway here will get empty vector, prlly remove check on line 25
-    (0_u8..=(len - current_clue - sum_of_others))
-        .map(move |offset| {
-            get_permutations(&clues[1..], len - current_clue - offset)
-                .into_iter()
-                .inspect(|x| println!("offset: {}; len: {}; permutations: {:?};", offset, len, x))
-                .flat_map(move |perm| {
-                    let zeroes = std::iter::repeat(0_u8).take(offset as usize);
-                    let ones = std::iter::repeat(1_u8).take(*current_clue as usize);
-                    let current_clue_position = zeroes.chain(ones);
-                    current_clue_position.chain(perm.into_iter())
+    Box::new((0..=N - init_offset - clues.iter().sum::<u8>() as usize)
+        .flat_map(move |offset| {
+            let offset = init_offset + offset;
+            get_permutations(&clues[1..], offset + current_clue)
+                .map(move |mut slice| {
+                    slice[offset..current_clue + offset].fill(1);
+//                    slice.iter_mut().skip(offset).take(current_clue).for_each(|mut item| *item = 1);
+                    slice
                 })
-                .collect_vec()
-        })
-        .inspect(|x| {
-            if x.len() != len as usize {
-                eprintln!("x.len() is: {}, but len is: {}", x.len(), len)
-            }
-        })
-        .collect_vec()
+        }))
 }
 
 fn print(field: &[[u8; 5]; 5]) {
@@ -69,14 +59,41 @@ fn print(field: &[[u8; 5]; 5]) {
     );
 }
 
+fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>) 
+    -> impl Iterator<Item=impl Iterator<Item=T>>
+{
+    let mut iters = matrix.into_iter()
+        .map(|iter| iter.into_iter()).collect_vec(); // TODO: inte_iter() type is asent. Bug
+    let mut vec_vec: Vec<Vec<T>> = vec![vec![]; iters.len()];
+
+    'outer: for i in 0.. {
+        for iter  in iters.iter_mut(){
+            match iter.next() {
+                Some(val) => {
+                    vec_vec[i].push(val);
+                }
+                None => break 'outer,
+            };
+        }
+    };
+    vec_vec.into_iter().map(|vec| vec.into_iter())
+}
+
 #[cfg(test)]
 mod basic_tests {
     use super::*;
 
     #[test]
+    fn transpose_test(){
+        let vec_vec = transpose(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]])
+            .map(|iter| iter.collect_vec()).collect_vec();
+        println!("{:?}", vec_vec);
+    }
+    
+    #[test]
     fn get_permutations_test() {
-        let permutations = get_permutations(&[1, 2], 5);
-        dbg!(permutations);
+        let permutations: Vec<Box<[u8; 15]>> = get_permutations(&[1, 2, 3, 1], 0).collect_vec();
+        dbg!(permutations); // TODO: implement transpose method with generics T
     }
 
     #[test]
