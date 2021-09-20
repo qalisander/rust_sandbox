@@ -1,6 +1,37 @@
 use itertools::Itertools;
 use std::fmt::{Display, Debug};
 use std::convert::TryInto;
+use std::ops::Deref;
+
+struct Clues(Vec<Vec<Clue>>);
+
+impl Clues {
+//    fn can_be_add(&self, perm: &[u8]) -> bool{
+//        perm.iter().zip(&self.0).all(|(&u8, clues_raw)|{
+//            
+//        })
+//    }
+    fn try_add(&mut self, perm: &[u8]) -> bool {
+        perm.iter().zip(&self.0).all(|(&u8, clues_raw)|{
+            let x = clues_raw.iter().find(|&clue| match clue.status {
+                ClueStatus::InUse(_) => {
+                    
+                }
+                ClueStatus::Used => false,
+            }).unwrap();
+            true
+        })
+    }
+}
+
+impl<const T: usize> From<[&[u8]; T]> for Clues {
+    fn from(from: [&[u8]; T]) -> Self {
+        let vec_vec = from.iter().map(|&clues| {
+            clues.iter().map(|clue| Clue { init_size: *clue, status: ClueStatus::InUse(*clue) }).collect_vec()
+        }).collect_vec();
+        Clues(vec_vec)
+    }
+}
 
 struct Clue {
     init_size: u8,
@@ -8,35 +39,43 @@ struct Clue {
 }
 
 enum ClueStatus {
-    NotUsed,
-    InUse {
-        current_size: u8,
-    },
+    InUse(u8),
     Used,
 }
 
-//    |-------> (x)
-//    |
-//    |
-//    V (y)
-
 // https://www.codewars.com/kata/5a479247e6be385a41000064/train/rust
-fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&[u8]; T], [&[u8]; T])) -> [[u8; T]; T] {
-
+fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&'static [u8]; T], [&'static [u8]; T])) -> [[u8; T]; T] {
+    let mut processed_top_clues = Clues::from(top_clues);
     let mut permutations_stack: Vec<[u8; T]> = Vec::with_capacity(T);
 
-    if solve_nongram_rec(&(top_clues, left_clues), &mut permutations_stack) {
+    if solve_nongram_rec(&mut processed_top_clues, left_clues, &mut permutations_stack) {
         return permutations_stack.try_into().unwrap(); // https://stackoverflow.com/questions/29570607/is-there-a-good-way-to-convert-a-vect-to-an-array
-    } else { 
+    } else {
         panic!("Solution not found")
     };
 
     // TODO: prlly create two functions: validate_field and validate_strategy (that stops further recursion)
     fn solve_nongram_rec<const T: usize>(
-        (top_clues, left_clues): &([&[u8]; T], [&[u8]; T]),
+        top_clues: &mut Clues,
+        left_clues: [&'static [u8]; T],
         permutations_stack: &mut Vec<[u8; T]>,
     ) -> bool {
-        unimplemented!();
+        let current_depth = permutations_stack.len();
+        if current_depth == T {
+            return true;
+        }
+
+        for permutation in get_permutations_rec::<T>(left_clues[current_depth], 0) {
+//            permutation.to_vec()
+
+            // is_valid(permutation)
+
+            permutations_stack.push(*permutation);
+            if solve_nongram_rec(top_clues, left_clues, permutations_stack) {
+                return true;
+            }
+        }
+        false
     }
 
     let mut field = [[0u8; T]; T];
@@ -49,20 +88,20 @@ fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&[u8]; T], [&[u8]; 
 //TODO: pay attention to boundaries between clues (there is at least one space between them)
 //TODO: write get_permutations_test
 //TODO: try run Rust code from python test
-
 //TODO: distance between permutations
-fn get_permutations<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
+
+fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
     if clues.is_empty() {
         return Box::new(std::iter::once(Box::new([0; N])));
     }
 
     let current_clue = *clues.first().unwrap() as usize;
     let clues_sum = clues.iter().sum::<u8>() as usize;
-    
+
     Box::new((0..=N.saturating_sub(init_offset + clues_sum))
         .flat_map(move |offset| {
             let offset = init_offset + offset;
-            get_permutations(&clues[1..], 1 + offset + current_clue)
+            get_permutations_rec(&clues[1..], 1 + offset + current_clue)
                 .map(move |mut slice| {
                     slice[offset..current_clue + offset].fill(1);
                     slice
@@ -73,7 +112,7 @@ fn get_permutations<const N: usize>(clues: &'static [u8], init_offset: usize) ->
 fn print<T: Debug>(field: impl IntoIterator<Item=impl IntoIterator<Item=T>>) {
     println!(
         "{}",
-        field.into_iter().map(|collection| 
+        field.into_iter().map(|collection|
             format!("{:?}", collection.into_iter().collect_vec())).join("\n")
     );
 }
@@ -102,7 +141,7 @@ mod basic_tests {
 
     #[test]
     fn get_permutations_test() {
-        let permutations: Vec<Box<[u8; 15]>> = get_permutations(&[1, 2, 3, 1], 0).collect_vec();
+        let permutations: Vec<Box<[u8; 15]>> = get_permutations_rec(&[1, 2, 3, 1], 0).collect_vec();
         dbg!(permutations); // TODO: implement transpose method with generics T
     }
 
