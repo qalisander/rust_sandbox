@@ -1,50 +1,99 @@
 use itertools::Itertools;
 use std::fmt::{Display, Debug};
 use std::convert::TryInto;
-use std::ops::Deref;
+use std::iter::{Zip, FilterMap, Rev};
+use trace::trace;
+trace::init_depth_var!();
 
-struct Clues(Vec<Vec<Clue>>);
+type Tile = u8;
+#[derive(Debug)]
+struct Clues<const T: usize>([Vec<Clue>; T]);
 
-impl Clues {
-//    fn can_be_add(&self, perm: &[u8]) -> bool{
-//        perm.iter().zip(&self.0).all(|(&u8, clues_raw)|{
-//            
-//        })
-//    }
-    fn try_add(&mut self, perm: &[u8]) -> bool {
-        perm.iter().zip(&self.0).all(|(&u8, clues_raw)|{
-            let x = clues_raw.iter().find(|&clue| match clue.status {
-                ClueStatus::InUse(_) => {
-                    
+impl<const T: usize> Clues<T> {
+    #[trace(pretty)]
+    fn can_be_subtracted(&self, tiles: &[Tile; T]) -> bool {
+        tiles.iter().zip(&self.0).all(|(&tile, clues_row)| {
+            for clue in clues_row {
+                if let ClueStatus::InUse(ref current_size) = clue.status {
+                    return match tile {
+                        1 => clue.init_size == *current_size,
+                        0 => clue.init_size == 0,
+                        _ => panic!("Invalid tile value!")
+                    }
                 }
-                ClueStatus::Used => false,
-            }).unwrap();
-            true
+            }
+            tile == 0
         })
     }
-}
 
-impl<const T: usize> From<[&[u8]; T]> for Clues {
-    fn from(from: [&[u8]; T]) -> Self {
-        let vec_vec = from.iter().map(|&clues| {
-            clues.iter().map(|clue| Clue { init_size: *clue, status: ClueStatus::InUse(*clue) }).collect_vec()
-        }).collect_vec();
-        Clues(vec_vec)
+    fn subtract(&mut self, tiles: &[Tile; T]){
+        for clues_row in self.filtered_clues_rows(tiles){
+            for clue in clues_row.iter_mut() {
+                match clue.status {
+                    ClueStatus::InUse(0) => {
+                        clue.status = ClueStatus::Used;
+                        break;
+                    },
+                    ClueStatus::InUse(ref mut current_size) => {
+                        *current_size -= 1;
+                        break;
+                    },
+                    _ => (),
+                }
+            }
+        }
+    }
+
+    fn add_back(&mut self, tiles: &[Tile; T]){
+        for clues_row in self.filtered_clues_rows(tiles).rev() {
+            for clue in clues_row.iter_mut() {
+                match clue.status {
+                    ClueStatus::InUse(ref mut current_size) if *current_size != clue.init_size=> {
+                        *current_size += 1;
+                        break;
+                    },
+                    ClueStatus::Used => {
+                        clue.status = ClueStatus::InUse(0);
+                        break;
+                    },
+                    _ => (),
+                }
+            }
+        }
+    }
+
+    fn filtered_clues_rows<'a>(&'a mut self, tiles: &'a [Tile; T]) -> impl DoubleEndedIterator<Item=&'a mut Vec<Clue>> {
+        tiles.iter()
+            .zip(&mut self.0)
+            .filter_map(|(&tile, clues_row)| if tile == 1 { Some(clues_row) } else { None })
     }
 }
 
+impl<const T: usize> From<[&[Tile]; T]> for Clues<T> {
+    fn from(from: [&[u8]; T]) -> Self {
+        let slice_vec = from.iter().map(|&clues| {
+            clues.iter().map(|clue| {
+                Clue { init_size: *clue, status: ClueStatus::InUse(*clue) }
+            }).collect_vec()
+        }).collect_vec().try_into().unwrap();
+        Clues(slice_vec)
+    }
+}
+
+#[derive(Debug)]
 struct Clue {
     init_size: u8,
     status: ClueStatus,
 }
 
+#[derive(Debug)]
 enum ClueStatus {
     InUse(u8),
     Used,
 }
 
 // https://www.codewars.com/kata/5a479247e6be385a41000064/train/rust
-fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&'static [u8]; T], [&'static [u8]; T])) -> [[u8; T]; T] {
+fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&'static [Tile]; T], [&'static [Tile]; T])) -> [[Tile; T]; T] {
     let mut processed_top_clues = Clues::from(top_clues);
     let mut permutations_stack: Vec<[u8; T]> = Vec::with_capacity(T);
 
@@ -54,42 +103,32 @@ fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&'static [u8]; T], 
         panic!("Solution not found")
     };
 
-    // TODO: prlly create two functions: validate_field and validate_strategy (that stops further recursion)
     fn solve_nongram_rec<const T: usize>(
-        top_clues: &mut Clues,
+        top_clues: &mut Clues<T>,
         left_clues: [&'static [u8]; T],
         permutations_stack: &mut Vec<[u8; T]>,
     ) -> bool {
-        let current_depth = permutations_stack.len();
-        if current_depth == T {
-            return true;
-        }
+        print(permutations_stack.clone());
 
-        for permutation in get_permutations_rec::<T>(left_clues[current_depth], 0) {
-//            permutation.to_vec()
+        let current_clues_index = permutations_stack.len();
+        for permutation in get_permutations_rec::<T>(left_clues[current_clues_index], 0)/*.inspect(|perm| {dbg!(perm);})*/ {
+            if !top_clues.can_be_subtracted(&permutation) {
+                continue;
+            }
 
-            // is_valid(permutation)
-
+            top_clues.subtract(&permutation);
             permutations_stack.push(*permutation);
-            if solve_nongram_rec(top_clues, left_clues, permutations_stack) {
+            if permutations_stack.len() == T || solve_nongram_rec(top_clues, left_clues, permutations_stack) {
                 return true;
             }
+            top_clues.add_back(&permutation);
+            permutations_stack.pop();
         }
         false
     }
-
-    let mut field = [[0u8; T]; T];
-    print(&field);
-    field
 }
 
-//TODO: use const generics https://blog.rust-lang.org/2021/02/26/const-generics-mvp-beta.html
-//TODO: pass here arr with len: u8
-//TODO: pay attention to boundaries between clues (there is at least one space between them)
-//TODO: write get_permutations_test
 //TODO: try run Rust code from python test
-//TODO: distance between permutations
-
 fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
     if clues.is_empty() {
         return Box::new(std::iter::once(Box::new([0; N])));
@@ -97,8 +136,9 @@ fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize
 
     let current_clue = *clues.first().unwrap() as usize;
     let clues_sum = clues.iter().sum::<u8>() as usize;
+    let clues_borders = clues.len() - 1;
 
-    Box::new((0..=N.saturating_sub(init_offset + clues_sum))
+    Box::new((0..=N.saturating_sub(init_offset + clues_sum + clues_borders))
         .flat_map(move |offset| {
             let offset = init_offset + offset;
             get_permutations_rec(&clues[1..], 1 + offset + current_clue)
@@ -107,25 +147,6 @@ fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize
                     slice
                 })
         }))
-}
-
-fn print<T: Debug>(field: impl IntoIterator<Item=impl IntoIterator<Item=T>>) {
-    println!(
-        "{}",
-        field.into_iter().map(|collection|
-            format!("{:?}", collection.into_iter().collect_vec())).join("\n")
-    );
-}
-
-fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>)
-                       -> impl Iterator<Item=impl Iterator<Item=T>>
-{
-    let mut iters = matrix.into_iter()
-        .map(|iter| iter.into_iter()).collect_vec(); // TODO: inte_iter() type is asent. Bug
-
-    (0..iters.len()).map(move |_| {
-        iters.iter_mut().filter_map(|iter| iter.next()).collect_vec().into_iter()
-    })
 }
 
 #[cfg(test)]
@@ -140,9 +161,20 @@ mod basic_tests {
     }
 
     #[test]
-    fn get_permutations_test() {
-        let permutations: Vec<Box<[u8; 15]>> = get_permutations_rec(&[1, 2, 3, 1], 0).collect_vec();
-        dbg!(permutations); // TODO: implement transpose method with generics T
+    fn get_permutations_15_test() {
+        let permutations = get_permutations_rec::<15>(&[1, 2, 3, 1], 0).map(|perm| perm.to_vec()).collect_vec();
+        assert_eq!(permutations.first().unwrap(), &vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0]);
+        assert_eq!(permutations.last().unwrap(), &vec![0u8, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1]);
+//        itertools::assert_equal(permutations.first().unwrap(), vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0].iter());
+//        print(permutations);
+    }
+
+    #[test]
+    fn get_permutations_single_clue_test() {
+        let permutations = get_permutations_rec::<15>(&[1], 0).map(|perm| perm.to_vec()).collect_vec();
+        assert_eq!(permutations.first().unwrap(), &vec![1u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert_eq!(permutations.last().unwrap(), &vec![0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+//        print(permutations);
     }
 
     #[test]
@@ -180,4 +212,23 @@ mod basic_tests {
         [0, 1, 0, 0, 0],
         [0, 1, 0, 1, 1],
     ];
+}
+
+fn print<T: Debug>(field: impl IntoIterator<Item=impl IntoIterator<Item=T>>) {
+    println!(
+        "{}",
+        field.into_iter().map(|collection|
+            format!("{:?}", collection.into_iter().collect_vec())).join("\n")
+    );
+}
+
+fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>)
+                       -> impl Iterator<Item=impl Iterator<Item=T>>
+{
+    let mut iters = matrix.into_iter()
+        .map(|iter| iter.into_iter()).collect_vec(); // TODO: inte_iter() type is asent. Bug
+
+    (0..iters.len()).map(move |_| {
+        iters.iter_mut().filter_map(|iter| iter.next()).collect_vec().into_iter()
+    })
 }
