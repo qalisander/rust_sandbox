@@ -1,135 +1,140 @@
 use itertools::Itertools;
-use std::fmt::{Display, Debug};
 use std::convert::TryInto;
-use std::iter::{Zip, FilterMap, Rev};
+use std::fmt::{Debug, Display};
+use std::iter::{FilterMap, Rev, Zip};
 use trace::trace;
 trace::init_depth_var!();
 
+//TODO: try run Rust code from python test
 type Tile = u8;
 #[derive(Debug)]
-struct Clues<const T: usize>([Vec<Clue>; T]);
+struct Clues<const T: usize>([FlatClues; T]);
+
+#[derive(Debug)]
+struct FlatClues {
+    stack: Vec<Tile>,
+    index: usize,
+}
+
+impl FlatClues {
+    fn current(&self) -> Option<&Tile> {
+        self.stack.get(self.index)
+    }
+    fn previous(&self) -> Option<&Tile> {
+        self.stack.get(self.index.checked_sub(1)?)
+    }
+}
 
 impl<const T: usize> Clues<T> {
-    #[trace(pretty)]
-    fn can_be_subtracted(&self, tiles: &[Tile; T]) -> bool {
-        tiles.iter().zip(&self.0).all(|(&tile, clues_row)| {
-            for clue in clues_row {
-                if let ClueStatus::InUse(ref current_size) = clue.status {
-                    return match tile {
-                        1 => clue.init_size == *current_size,
-                        0 => clue.init_size == 0,
-                        _ => panic!("Invalid tile value!")
-                    }
-                }
-            }
-            tile == 0
-        })
-    }
-
-    fn subtract(&mut self, tiles: &[Tile; T]){
-        for clues_row in self.filtered_clues_rows(tiles){
-            for clue in clues_row.iter_mut() {
-                match clue.status {
-                    ClueStatus::InUse(0) => {
-                        clue.status = ClueStatus::Used;
-                        break;
-                    },
-                    ClueStatus::InUse(ref mut current_size) => {
-                        *current_size -= 1;
-                        break;
-                    },
-                    _ => (),
-                }
-            }
-        }
-    }
-
-    fn add_back(&mut self, tiles: &[Tile; T]){
-        for clues_row in self.filtered_clues_rows(tiles).rev() {
-            for clue in clues_row.iter_mut() {
-                match clue.status {
-                    ClueStatus::InUse(ref mut current_size) if *current_size != clue.init_size=> {
-                        *current_size += 1;
-                        break;
-                    },
-                    ClueStatus::Used => {
-                        clue.status = ClueStatus::InUse(0);
-                        break;
-                    },
-                    _ => (),
-                }
-            }
-        }
-    }
-
-    fn filtered_clues_rows<'a>(&'a mut self, tiles: &'a [Tile; T]) -> impl DoubleEndedIterator<Item=&'a mut Vec<Clue>> {
-        tiles.iter()
-            .zip(&mut self.0)
-            .filter_map(|(&tile, clues_row)| if tile == 1 { Some(clues_row) } else { None })
-    }
-}
-
-impl<const T: usize> From<[&[Tile]; T]> for Clues<T> {
     fn from(from: [&[u8]; T]) -> Self {
-        let slice_vec = from.iter().map(|&clues| {
-            clues.iter().map(|clue| {
-                Clue { init_size: *clue, status: ClueStatus::InUse(*clue) }
-            }).collect_vec()
-        }).collect_vec().try_into().unwrap();
+        let slice_vec = from
+            .iter()
+            .map(|&clues| FlatClues {
+                stack: clues
+                    .iter()
+                    .flat_map(|&clue| std::iter::repeat(1).take(clue.into()).chain([0]))
+                    .collect_vec(),
+                index: 0,
+            })
+            .collect_vec()
+            .try_into()
+            .unwrap();
         Clues(slice_vec)
     }
-}
 
-#[derive(Debug)]
-struct Clue {
-    init_size: u8,
-    status: ClueStatus,
-}
+    fn can_be_used(&self, permutation: &[Tile; T]) -> bool {
+        permutation
+            .iter()
+            .zip(&self.0)
+            .all(|(permutation_tile, clues)| match clues.current() {
+                Some(clue_tile) => match (clue_tile, permutation_tile) {
+                    (1, 1) | (0, 0) => true,
+                    (0, 1) => false,
+                    (1, 0) => match clues.previous() {
+                        Some(&prev_clue) => prev_clue != 1,
+                        None => true,
+                    },
+                    _ => unreachable!(),
+                },
+                None => false,
+            })
+    }
 
-#[derive(Debug)]
-enum ClueStatus {
-    InUse(u8),
-    Used,
+    fn add(&mut self, permutation: &[Tile; T]) {
+        for (permutation_tile, clues) in permutation.iter().zip(&mut self.0) {
+            match (clues.current(), clues.previous(), permutation_tile) {
+                (Some(0), Some(1), 0) | (_, _, 1) => clues.index += 1,
+                _ => (),
+            }
+        }
+    }
+
+    fn remove(&mut self, permutation: &[Tile; T]) {
+        for (permutation_tile, clues) in permutation.iter().zip(&mut self.0) {
+            match (clues.previous(), permutation_tile) {
+                (Some(0), 0) | (_, 1) => clues.index -= 1,
+                _ => (),
+            }
+        }
+    }
 }
 
 // https://www.codewars.com/kata/5a479247e6be385a41000064/train/rust
-fn solve_nonogram<const T: usize>((top_clues, left_clues): ([&'static [Tile]; T], [&'static [Tile]; T])) -> [[Tile; T]; T] {
+fn solve_nonogram<const T: usize>(
+    (top_clues, left_clues): ([&'static [Tile]; T], [&'static [Tile]; T]),
+) -> [[Tile; T]; T] {
     let mut processed_top_clues = Clues::from(top_clues);
     let mut permutations_stack: Vec<[u8; T]> = Vec::with_capacity(T);
+    let mut counter = 0;
 
-    if solve_nongram_rec(&mut processed_top_clues, left_clues, &mut permutations_stack) {
+    if solve_nongram_rec(
+        &mut counter,
+        &mut processed_top_clues,
+        left_clues,
+        &mut permutations_stack,
+    ) {
         return permutations_stack.try_into().unwrap(); // https://stackoverflow.com/questions/29570607/is-there-a-good-way-to-convert-a-vect-to-an-array
     } else {
         panic!("Solution not found")
     };
 
     fn solve_nongram_rec<const T: usize>(
+        counter: &mut u32,
         top_clues: &mut Clues<T>,
         left_clues: [&'static [u8]; T],
         permutations_stack: &mut Vec<[u8; T]>,
     ) -> bool {
+        println!("counter: {:?}", &counter);
+        *counter += 1;
         print(permutations_stack.clone());
+        println!();
+        println!("{:?}", &top_clues);
+        println!("---------------------------------------");
 
         let current_clues_index = permutations_stack.len();
-        for permutation in get_permutations_rec::<T>(left_clues[current_clues_index], 0)/*.inspect(|perm| {dbg!(perm);})*/ {
-            if !top_clues.can_be_subtracted(&permutation) {
+        for permutation in get_permutations_rec::<T>(left_clues[current_clues_index], 0) {
+            if !top_clues.can_be_used(&permutation) {
                 continue;
             }
 
-            top_clues.subtract(&permutation);
+            top_clues.add(&permutation);
             permutations_stack.push(*permutation);
-            if permutations_stack.len() == T || solve_nongram_rec(top_clues, left_clues, permutations_stack) {
+            if permutations_stack.len() == T
+                || solve_nongram_rec(counter, top_clues, left_clues, permutations_stack)
+            {
                 return true;
             }
-            top_clues.add_back(&permutation);
+            top_clues.remove(&permutation);
             permutations_stack.pop();
         }
         false
     }
 }
 
-//TODO: try run Rust code from python test
-fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize) -> Box<dyn Iterator<Item=Box<[u8; N]>>> {
+fn get_permutations_rec<const N: usize>(
+    clues: &'static [u8],
+    init_offset: usize,
+) -> Box<dyn Iterator<Item = Box<[u8; N]>>> {
     if clues.is_empty() {
         return Box::new(std::iter::once(Box::new([0; N])));
     }
@@ -138,15 +143,15 @@ fn get_permutations_rec<const N: usize>(clues: &'static [u8], init_offset: usize
     let clues_sum = clues.iter().sum::<u8>() as usize;
     let clues_borders = clues.len() - 1;
 
-    Box::new((0..=N.saturating_sub(init_offset + clues_sum + clues_borders))
-        .flat_map(move |offset| {
+    Box::new(
+        (0..=N.saturating_sub(init_offset + clues_sum + clues_borders)).flat_map(move |offset| {
             let offset = init_offset + offset;
-            get_permutations_rec(&clues[1..], 1 + offset + current_clue)
-                .map(move |mut slice| {
-                    slice[offset..current_clue + offset].fill(1);
-                    slice
-                })
-        }))
+            get_permutations_rec(&clues[1..], 1 + offset + current_clue).map(move |mut slice| {
+                slice[offset..current_clue + offset].fill(1);
+                slice
+            })
+        }),
+    )
 }
 
 #[cfg(test)]
@@ -156,25 +161,50 @@ mod basic_tests {
     #[test]
     fn transpose_test() {
         let vec_vec = transpose(vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9]])
-            .map(|iter| iter.collect_vec()).collect_vec();
+            .map(|iter| iter.collect_vec())
+            .collect_vec();
         println!("{:?}", vec_vec);
     }
 
     #[test]
     fn get_permutations_15_test() {
-        let permutations = get_permutations_rec::<15>(&[1, 2, 3, 1], 0).map(|perm| perm.to_vec()).collect_vec();
-        assert_eq!(permutations.first().unwrap(), &vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0]);
-        assert_eq!(permutations.last().unwrap(), &vec![0u8, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1]);
-//        itertools::assert_equal(permutations.first().unwrap(), vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0].iter());
-//        print(permutations);
+        let permutations = get_permutations_rec::<15>(&[1, 2, 3, 1], 0)
+            .map(|perm| perm.to_vec())
+            .collect_vec();
+        assert_eq!(
+            permutations.first().unwrap(),
+            &vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            permutations.last().unwrap(),
+            &vec![0u8, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1]
+        );
+        //        itertools::assert_equal(permutations.first().unwrap(), vec![1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0].iter());
+        //        print(permutations);
+    }
+
+    #[test]
+    fn get_permutations_5_test() {
+        let permutations = get_permutations_rec::<5>(&[3], 0)
+            .map(|perm| perm.to_vec())
+            .collect_vec();
+
+        print(permutations);
     }
 
     #[test]
     fn get_permutations_single_clue_test() {
-        let permutations = get_permutations_rec::<15>(&[1], 0).map(|perm| perm.to_vec()).collect_vec();
-        assert_eq!(permutations.first().unwrap(), &vec![1u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        assert_eq!(permutations.last().unwrap(), &vec![0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-//        print(permutations);
+        let permutations = get_permutations_rec::<15>(&[1], 0)
+            .map(|perm| perm.to_vec())
+            .collect_vec();
+        assert_eq!(
+            permutations.first().unwrap(),
+            &vec![1u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            permutations.last().unwrap(),
+            &vec![0u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+        );
     }
 
     #[test]
@@ -214,21 +244,29 @@ mod basic_tests {
     ];
 }
 
-fn print<T: Debug>(field: impl IntoIterator<Item=impl IntoIterator<Item=T>>) {
+fn print<T: Debug>(field: impl IntoIterator<Item = impl IntoIterator<Item = T>>) {
     println!(
         "{}",
-        field.into_iter().map(|collection|
-            format!("{:?}", collection.into_iter().collect_vec())).join("\n")
+        field
+            .into_iter()
+            .map(|collection| format!("{:?}", collection.into_iter().collect_vec()))
+            .join("\n")
     );
 }
 
-fn transpose<T: Clone>(matrix: impl IntoIterator<Item=impl IntoIterator<Item=T>>)
-                       -> impl Iterator<Item=impl Iterator<Item=T>>
-{
-    let mut iters = matrix.into_iter()
-        .map(|iter| iter.into_iter()).collect_vec(); // TODO: inte_iter() type is asent. Bug
+fn transpose<T: Clone>(
+    matrix: impl IntoIterator<Item = impl IntoIterator<Item = T>>,
+) -> impl Iterator<Item = impl Iterator<Item = T>> {
+    let mut iters = matrix
+        .into_iter()
+        .map(|iter| iter.into_iter())
+        .collect_vec(); // TODO: inte_iter() type is asent. Bug
 
     (0..iters.len()).map(move |_| {
-        iters.iter_mut().filter_map(|iter| iter.next()).collect_vec().into_iter()
+        iters
+            .iter_mut()
+            .filter_map(|iter| iter.next())
+            .collect_vec()
+            .into_iter()
     })
 }

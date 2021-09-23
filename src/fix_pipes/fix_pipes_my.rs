@@ -164,7 +164,7 @@ pub fn check_pipe(pipe_map: &[&str]) -> bool {
     println!("Before:\n{}", checker);
     let ans = checker.check();
     println!("After:\n{}", checker);
-    println!("{}\n", std::iter::repeat("-").take(10).collect::<String>());
+    println!("{}\n", ['-'; 20].iter().collect::<String>());
     ans
 }
 
