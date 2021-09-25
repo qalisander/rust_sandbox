@@ -56,21 +56,21 @@ impl<const T: usize> Clues<T> {
                     },
                     _ => unreachable!(),
                 },
-                None => false,
+                None => *permutation_tile == 0,
             })
     }
 
-    fn add(&mut self, permutation: &[Tile; T]) {
-        for (permutation_tile, clues) in permutation.iter().zip(&mut self.0) {
-            match (clues.current(), clues.previous(), permutation_tile) {
-                (Some(0), Some(1), 0) | (_, _, 1) => clues.index += 1,
+    fn add(&mut self, permutation: &[Tile; T]) { // TODO: apply permutation
+        for (clues, permutation_tile) in self.0.iter_mut().zip(permutation) {
+            match (clues.current(), clues.previous(), permutation_tile) { // NOTE: clues.previous() every time is 1 if cuurent is 0 unless prev exist
+                (Some(0), Some(_), 0) | (_, _, 1) => clues.index += 1,
                 _ => (),
             }
         }
     }
 
-    fn remove(&mut self, permutation: &[Tile; T]) {
-        for (permutation_tile, clues) in permutation.iter().zip(&mut self.0) {
+    fn remove(&mut self, permutation: &[Tile; T]) { // TODO: undo permutation
+        for (clues, permutation_tile) in self.0.iter_mut().zip(permutation) {
             match (clues.previous(), permutation_tile) {
                 (Some(0), 0) | (_, 1) => clues.index -= 1,
                 _ => (),
@@ -185,7 +185,7 @@ mod basic_tests {
 
     #[test]
     fn get_permutations_5_test() {
-        let permutations = get_permutations_rec::<5>(&[3], 0)
+        let permutations = get_permutations_rec::<5>(&[2, 2], 0)
             .map(|perm| perm.to_vec())
             .collect_vec();
 
@@ -217,6 +217,11 @@ mod basic_tests {
         assert_eq!(solve_nonogram(CLUES_2), ANS_2);
     }
 
+    #[test]
+    fn test3() {
+        assert_eq!(solve_nonogram(CLUES_3), ANS_3);
+    }
+
     const CLUES_1: ([&[u8]; 5], [&[u8]; 5]) = (
         [&[1, 1], &[4], &[1, 1, 1], &[3], &[1]],
         [&[1], &[2], &[3], &[2, 1], &[4]],
@@ -241,6 +246,37 @@ mod basic_tests {
         [1, 1, 0, 1, 1],
         [0, 1, 0, 0, 0],
         [0, 1, 0, 1, 1],
+    ];
+
+    const CLUES_3: ([&[u8]; 15], [&[u8]; 15]) = (
+        [
+            &[4, 3], &[1, 6, 2], &[1, 2, 2, 1, 1], &[1, 2, 2, 1, 2], &[3, 2, 3],
+            &[2, 1, 3], &[1, 1, 1], &[2, 1, 4, 1], &[1, 1, 1, 1, 2], &[1, 4, 2],
+            &[1, 1, 2, 1], &[2, 7, 1], &[2, 1, 1, 2], &[1, 2, 1], &[3, 3]
+        ],
+        [
+            &[3, 2], &[1, 1, 1, 1], &[1, 2, 1, 2], &[1, 2, 1, 1, 3], &[1, 1, 2, 1],
+            &[2, 3, 1, 2], &[9, 3], &[2, 3], &[1, 2], &[1, 1, 1, 1],
+            &[1, 4, 1], &[1, 2, 2, 2], &[1, 1, 1, 1, 1, 1, 2], &[2, 1, 1, 2, 1, 1], &[3, 4, 3, 1]
+        ],
+    );
+
+    const ANS_3: [[u8; 15]; 15] = [
+        [0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
+        [1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0],
+        [1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1],
+        [1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1],
+        [1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1],
+        [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0],
+        [0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
+        [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+        [0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0],
+        [1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0],
+        [1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1],
+        [1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1],
+        [0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
     ];
 }
 
