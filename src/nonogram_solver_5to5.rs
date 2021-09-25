@@ -42,6 +42,7 @@ impl<const T: usize> Clues<T> {
         Clues(slice_vec)
     }
 
+    // TODO: count rest keys
     fn can_be_used(&self, permutation: &[Tile; T]) -> bool {
         permutation
             .iter()
@@ -51,7 +52,7 @@ impl<const T: usize> Clues<T> {
                     (1, 1) | (0, 0) => true,
                     (0, 1) => false,
                     (1, 0) => match clues.previous() {
-                        Some(&prev_clue) => prev_clue != 1,
+                        Some(&prev_clue) => prev_clue == 0,
                         None => true,
                     },
                     _ => unreachable!(),
@@ -60,16 +61,18 @@ impl<const T: usize> Clues<T> {
             })
     }
 
-    fn add(&mut self, permutation: &[Tile; T]) { // TODO: apply permutation
+    // TODO: apply permutation
+    fn add(&mut self, permutation: &[Tile; T]) {
         for (clues, permutation_tile) in self.0.iter_mut().zip(permutation) {
-            match (clues.current(), clues.previous(), permutation_tile) { // NOTE: clues.previous() every time is 1 if cuurent is 0 unless prev exist
-                (Some(0), Some(_), 0) | (_, _, 1) => clues.index += 1,
+            match (clues.current(), permutation_tile) {
+                (Some(0), 0) | (_, 1) if clues.stack.len() > 1 => { clues.index += 1; }
                 _ => (),
             }
         }
     }
 
-    fn remove(&mut self, permutation: &[Tile; T]) { // TODO: undo permutation
+    fn remove(&mut self, permutation: &[Tile; T]) {
+        // TODO: undo permutation
         for (clues, permutation_tile) in self.0.iter_mut().zip(permutation) {
             match (clues.previous(), permutation_tile) {
                 (Some(0), 0) | (_, 1) => clues.index -= 1,
@@ -104,12 +107,12 @@ fn solve_nonogram<const T: usize>(
         left_clues: [&'static [u8]; T],
         permutations_stack: &mut Vec<[u8; T]>,
     ) -> bool {
-        println!("counter: {:?}", &counter);
-        *counter += 1;
-        print(permutations_stack.clone());
-        println!();
-        println!("{:?}", &top_clues);
-        println!("---------------------------------------");
+        //        println!("counter: {:?}", &counter);
+        //        *counter += 1;
+        //        print(permutations_stack.clone());
+        //        println!();
+        //        println!("{:?}", &top_clues);
+        //        println!("---------------------------------------");
 
         let current_clues_index = permutations_stack.len();
         for permutation in get_permutations_rec::<T>(left_clues[current_clues_index], 0) {
@@ -250,18 +253,42 @@ mod basic_tests {
 
     const CLUES_3: ([&[u8]; 15], [&[u8]; 15]) = (
         [
-            &[4, 3], &[1, 6, 2], &[1, 2, 2, 1, 1], &[1, 2, 2, 1, 2], &[3, 2, 3],
-            &[2, 1, 3], &[1, 1, 1], &[2, 1, 4, 1], &[1, 1, 1, 1, 2], &[1, 4, 2],
-            &[1, 1, 2, 1], &[2, 7, 1], &[2, 1, 1, 2], &[1, 2, 1], &[3, 3]
+            &[4, 3],
+            &[1, 6, 2],
+            &[1, 2, 2, 1, 1],
+            &[1, 2, 2, 1, 2],
+            &[3, 2, 3],
+            &[2, 1, 3],
+            &[1, 1, 1],
+            &[2, 1, 4, 1],
+            &[1, 1, 1, 1, 2],
+            &[1, 4, 2],
+            &[1, 1, 2, 1],
+            &[2, 7, 1],
+            &[2, 1, 1, 2],
+            &[1, 2, 1],
+            &[3, 3],
         ],
         [
-            &[3, 2], &[1, 1, 1, 1], &[1, 2, 1, 2], &[1, 2, 1, 1, 3], &[1, 1, 2, 1],
-            &[2, 3, 1, 2], &[9, 3], &[2, 3], &[1, 2], &[1, 1, 1, 1],
-            &[1, 4, 1], &[1, 2, 2, 2], &[1, 1, 1, 1, 1, 1, 2], &[2, 1, 1, 2, 1, 1], &[3, 4, 3, 1]
+            &[3, 2],
+            &[1, 1, 1, 1],
+            &[1, 2, 1, 2],
+            &[1, 2, 1, 1, 3],
+            &[1, 1, 2, 1],
+            &[2, 3, 1, 2],
+            &[9, 3],
+            &[2, 3],
+            &[1, 2],
+            &[1, 1, 1, 1],
+            &[1, 4, 1],
+            &[1, 2, 2, 2],
+            &[1, 1, 1, 1, 1, 1, 2],
+            &[2, 1, 1, 2, 1, 1],
+            &[3, 4, 3, 1],
         ],
     );
 
-    const ANS_3: [[u8; 15]; 15] = [
+    pub const ANS_3: [[u8; 15]; 15] = [
         [0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0],
         [0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0],
         [1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0],
