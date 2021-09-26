@@ -1,5 +1,6 @@
 #![feature(test)]
 #![feature(slice_pattern)]
+#![feature(format_args_capture)]
 pub mod common_denominators;
 pub mod common_denominators_2;
 mod decimal_to_factorial_and_back;
@@ -15,4 +16,4 @@ pub mod spiral;
 mod three_pass_compiler;
 mod simple_interactive_interpreter;
 mod test_frameworks_test;
-mod nonogram_solver_5to5;
+pub mod nonogram_solvers;
