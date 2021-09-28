@@ -29,8 +29,8 @@ impl<const T: usize> Clues<T> {
 
     fn can_be_applied(&self, permutation: &[Bit; T]) -> bool {
         permutation.iter().zip(&self.0)
-            .all(|(permutation_bit, clues)| match clues.current() {
-                Some(clue_current_bit) => match (*clue_current_bit, *permutation_bit) {
+            .all(|(permutation_tile, clues)| match clues.current() {
+                Some(clue_current) => match (*clue_current, *permutation_tile) {
                     (FILLED, FILLED) | (EMPTY, EMPTY) => true,
                     (EMPTY, FILLED) => false,
                     (FILLED, EMPTY) => match clues.previous() {
@@ -39,13 +39,13 @@ impl<const T: usize> Clues<T> {
                     },
                     _ => unreachable!(),
                 },
-                None => *permutation_bit == 0,
+                None => *permutation_tile == 0,
             })
     }
 
     fn apply_permutation(&mut self, permutation: &[Bit; T]) -> Vec<bool> {
-        self.0.iter_mut().zip(permutation).map(|(clues, permutation_bit)|
-            match (clues.current(), *permutation_bit) {
+        self.0.iter_mut().zip(permutation).map(|(clues, permutation_tile)|
+            match (clues.current(), *permutation_tile) {
                 (Some(&EMPTY), EMPTY) | (_, FILLED) if clues.stack.len() > 1 => {
                     clues.index += 1;
                     true
@@ -54,9 +54,9 @@ impl<const T: usize> Clues<T> {
             }).collect_vec()
     }
 
-    fn undo_permutation(&mut self, altered_bits: Vec<bool>) {
-        for (clues, altered_bit) in self.0.iter_mut().zip(altered_bits) {
-            if altered_bit {
+    fn undo_permutation(&mut self, altered_tiles: Vec<bool>) {
+        for (clues, altered_tile) in self.0.iter_mut().zip(altered_tiles) {
+            if altered_tile {
                 clues.index -= 1;
             }
         }
@@ -106,14 +106,14 @@ pub fn solve_nonogram<const T: usize>(
                 continue;
             }
 
-            let altered_bits = top_clues.apply_permutation(&permutation);
+            let altered_tiles = top_clues.apply_permutation(&permutation);
             permutations_stack.push(*permutation);
             if permutations_stack.len() == T
                 || solve_nongram_rec(top_clues, left_clues, permutations_stack)
             {
                 return true;
             }
-            top_clues.undo_permutation(altered_bits);
+            top_clues.undo_permutation(altered_tiles);
             permutations_stack.pop();
         }
         false
