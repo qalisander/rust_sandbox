@@ -27,5 +27,9 @@ name = "testbench_1"
 harness = false
 
 [[bench]]
+name = "testbench_2"
+harness = false
+
+[[bench]]
 name = "nonogram_solver_bench"
 harness = false

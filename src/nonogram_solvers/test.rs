@@ -1,8 +1,8 @@
 #[cfg(test)]
 use crate::nonogram_solvers::*;
 extern crate test;
-use super::*;
 use self::test::Bencher;
+use super::*;
 
 #[test]
 fn transpose_test() {
@@ -14,10 +14,15 @@ fn transpose_test() {
 
 #[test]
 fn get_permutations_15_test() {
-    let permutations = get_permutations::<15>(&[Shift::Available; 15], &[1, 2, 3, 1])
-        .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
-        .collect_vec();
-//        print(&permutations);
+    let permutations = get_permutations::<15>(
+        &[Shift::Available; 15],
+        &[1, 2, 3, 1],
+        BitVec::from_elem(15, false),
+        BitVec::from_elem(15, false),
+    )
+    .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
+    .collect_vec();
+    //        print(&permutations);
     assert_eq!(
         permutations.first().unwrap(),
         &[1u8, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0],
@@ -33,18 +38,39 @@ fn get_permutations_15_test() {
 
 #[test]
 fn get_permutations_5_test() {
-    let permutations = get_permutations::<5>(&[Shift::Available; 5], &[2, 2])
+    let permutations = get_permutations::<5>(
+        &[Shift::Available; 5],
+        &[2, 2],
+        BitVec::from_elem(5, false),
+        BitVec::from_elem(5, false),
+    )
+    .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
+    .collect_vec();
+
+    assert_eq!(permutations.first().unwrap(), &[1u8, 1, 0, 1, 1]);
+
+    let permutations = get_permutations::<5>(
+        &[Shift::Available; 5],
+        &[2, 1],
+        BitVec::from_elem(5, false),
+        BitVec::from_elem(5, false),
+    )
         .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
         .collect_vec();
 
-    assert_eq!(permutations.first().unwrap(), &[1u8, 1, 0, 1, 1]);
+    assert_eq!(permutations.first().unwrap(), &[1u8, 1, 0, 1, 0]);
 }
 
 #[test]
 fn get_permutations_single_clue_test() {
-    let permutations = get_permutations::<15>(&[Shift::Available; 15], &[1])
-        .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
-        .collect_vec();
+    let permutations = get_permutations::<15>(
+        &[Shift::Available; 15],
+        &[1],
+        BitVec::from_elem(15, false),
+        BitVec::from_elem(15, false),
+    )
+    .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
+    .collect_vec();
     assert_eq!(
         permutations.first().unwrap(),
         &vec![1u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -94,7 +120,10 @@ fn test50() {
     let arr_left = (1..6).rev().collect_vec();
     let keys_top = (0..COUNT).map(|_| &arr_top[..]).collect_vec();
     let keys_left = (0..COUNT).map(|_| &arr_left[..]).collect_vec();
-    print(solve_nonogram::<COUNT>((keys_top.try_into().unwrap(), keys_left.try_into().unwrap())));
+    print(solve_nonogram::<COUNT>((
+        keys_top.try_into().unwrap(),
+        keys_left.try_into().unwrap(),
+    )));
 }
 
 const CLUES_1: ([&[u8]; 5], [&[u8]; 5]) = (
