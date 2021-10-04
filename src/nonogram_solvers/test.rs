@@ -16,8 +16,8 @@ fn transpose_test() {
 fn get_permutations_15_test() {
     let permutations = get_permutations::<15>(
         &[1, 2, 3, 1],
-        BitVec::from_elem(15, false),
-        BitVec::from_elem(15, false),
+        BitSet::with_capacity(15),
+        BitSet::with_capacity(15),
     )
     .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
     .collect_vec();
@@ -39,8 +39,8 @@ fn get_permutations_15_test() {
 fn get_permutations_5_test() {
     let permutations = get_permutations::<5>(
         &[2, 2],
-        BitVec::from_elem(5, false),
-        BitVec::from_elem(5, false),
+        BitSet::with_capacity(5),
+        BitSet::with_capacity(5)
     )
     .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
     .collect_vec();
@@ -49,8 +49,8 @@ fn get_permutations_5_test() {
 
     let permutations = get_permutations::<5>(
         &[2, 1],
-        BitVec::from_elem(5, false),
-        BitVec::from_elem(5, false),
+        BitSet::with_capacity(5),
+        BitSet::with_capacity(5),
     )
         .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
         .collect_vec();
@@ -62,8 +62,8 @@ fn get_permutations_5_test() {
 fn get_permutations_single_clue_test() {
     let permutations = get_permutations::<15>(
         &[1],
-        BitVec::from_elem(15, false),
-        BitVec::from_elem(15, false),
+        BitSet::with_capacity(15),
+        BitSet::with_capacity(15),
     )
     .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
     .collect_vec();

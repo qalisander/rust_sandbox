@@ -15,13 +15,6 @@ type Bit = bool;
 const FILLED: Bit = true;
 const EMPTY: Bit = false;
 
-#[derive(Debug, Copy, Clone)]
-enum Shift {
-    Available,
-    Mandatory,
-    Banned,
-}
-
 #[derive(Debug)]
 struct Clues<const T: usize>([FlatClues; T]);
 
@@ -38,50 +31,16 @@ impl<const T: usize> From<[&[u8]; T]> for Clues<T> {
     }
 }
 
-// TODO: prrlly remove const T, store vec only and check len as invariant
-
 impl<const T: usize> Clues<T> {
-    fn get_next_possible_bits(&self) -> Box<[Shift; T]>{
-        let slice = self.0.iter().map(|clues| {
-            match clues.next() {
-                Some(FILLED) => {
-                    match clues.current() {
-                        None | Some(EMPTY) => { Shift::Available} // TODO: add remaining capacity
-                        Some(FILLED) => { Shift::Mandatory },
-                        _ => unreachable!() // TODO: use EMPTY FILLED enums
-                    }},
-                Some(EMPTY) | None => Shift::Banned,
-                _ => unreachable!(),
-            }
-        }).collect_vec().try_into().unwrap();
-        Box::new(slice)
-    }
-
     fn get_next_mandatory_bits(&self) -> BitVec {
         self.0.iter().map(|clues| {
             matches!((clues.next(), clues.current()), (Some(FILLED), Some(FILLED)))
-//            match clues.next() {
-//                Some(FILLED) => {
-//                    match clues.current() {
-//                        None | Some(EMPTY) => false,
-//                        _ => true,
-//                    }},
-//                _ => false,
-//            }
         }).collect()
     }
 
     fn get_next_banned_bits(&self) -> BitVec {
         self.0.iter().map(|clues| {
             matches!(clues.next(), Some(EMPTY) | None)
-//            match clues.next() {
-//                Some(FILLED) => {
-//                    match clues.current() {
-//                        None | Some(EMPTY) => true,
-//                        _ => false,
-//                    }},
-//                _ => false,
-//            }
         }).collect()
     }
 
@@ -145,8 +104,8 @@ pub fn solve_nonogram<const T: usize>(
         permutations_stack: &mut Vec<BitVec>,
     ) -> bool {
         let current_permutation_index = permutations_stack.len();
-        let next_mandatory_bits = top_clues.get_next_mandatory_bits();
-        let next_banned_bits = top_clues.get_next_banned_bits();
+        let next_mandatory_bits = BitSet::from_bit_vec(top_clues.get_next_mandatory_bits());
+        let next_banned_bits = BitSet::from_bit_vec(top_clues.get_next_banned_bits());
 
 //        dbg!(&next_mandatory_bits);
 //        dbg!(&next_banned_bits);
@@ -168,19 +127,19 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: BitVec, next_banned_bits: BitVec) -> Box<dyn Iterator<Item=BitVec> + 'a> {
-    let permutation = BitVec::from_elem(T, EMPTY);
+fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: BitSet, next_banned_bits: BitSet) -> Box<dyn Iterator<Item=BitVec> + 'a> {
+    let permutation = BitSet::with_capacity(T);
     return get_permutations_rec::<T>(permutation, clues, 0, next_mandatory_bits, next_banned_bits);
 
     fn get_permutations_rec<'a, const T: usize>(
-        permutation: BitVec,
+        permutation: BitSet,
         clues: &'a [u8],
         init_offset: usize,
-        next_mandatory_bits: BitVec,
-        next_banned_bits: BitVec,
+        next_mandatory_bits: BitSet,
+        next_banned_bits: BitSet,
     ) -> Box<dyn Iterator<Item = BitVec> + 'a> {
         let current_clue = match clues.first() {
-            None => return Box::new(iter::once(permutation)),
+            None => return Box::new(iter::once(permutation.into_bit_vec())),
             Some(&clue) => clue as usize,
         };
         let clues_sum = clues.iter().sum::<u8>() as usize;
@@ -188,37 +147,18 @@ fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: B
 
         let iter = (0..T + 1 - (init_offset + clues_sum + clues_borders)).filter_map(move |offset| {
             let offset = init_offset + offset;
-
             let ones_range = offset..current_clue + offset;
             let mut permutation = permutation.clone();
             for index in ones_range {
-                permutation.set(index, true);
+                permutation.insert(index);
             }
 
-            let mut next_mandatory_bits_tmp = next_mandatory_bits.clone();
-            next_mandatory_bits_tmp.difference(&permutation);
-            next_mandatory_bits_tmp.truncate(current_clue + offset + 1);
-            let has_ones_valid = next_mandatory_bits_tmp.none();
-
-
-            let mut next_banned_bits_tmp = next_banned_bits.clone();
-            next_banned_bits_tmp.and(&permutation);
-            let has_zeroes_valid = next_banned_bits_tmp.none();
-
-//            let next_mandatory_set = BitSet::from_bit_vec(next_mandatory_bits_tmp.clone());
-//            let mut next_banned_set = BitSet::from_bit_vec(next_banned_bits.clone());
-//            let permutation_set = BitSet::from_bit_vec(permutation.clone());
-//
-//            let has_zeroes_valid = next_banned_set.is_disjoint(&permutation_set);
-
-
-//            let has_ones_valid = next_mandatory_set.is_subset(&permutation_set);
-
-//            if *clues == [2, 1] {
-//                dbg!(&next_mandatory_set);
-//                dbg!(&next_banned_set);
-//                dbg!(&permutation_set);
-//            }
+            let has_zeroes_valid = next_banned_bits
+                .is_disjoint(&permutation);
+            let has_ones_valid = next_mandatory_bits
+                .difference(&permutation)
+                .take_while(|index| *index < current_clue + offset + 1)
+                .count() == 0;
 
             if has_ones_valid && has_zeroes_valid{
                 Some(get_permutations_rec::<T>(
