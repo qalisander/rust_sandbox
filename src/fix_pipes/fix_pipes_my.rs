@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, Sub};
 // https://www.codewars.com/kata/59f81fe146d84322ed00001e
 
 #[derive(Debug, Copy, Clone)]
@@ -116,7 +116,7 @@ impl PipeChecker {
                 }
             }
         }
-        return true;
+        true
     }
 
     fn check_rec(
@@ -136,7 +136,7 @@ impl PipeChecker {
                         if nearest_tile.can_move_to_dir(current_point - nearest) {
                             if !nearest_tile.is_visited {
                                 nearest_tile.is_visited = true; // NOTE: create method try_visit
-                                let nearest_tile = (*nearest_tile).clone();
+                                let nearest_tile = *nearest_tile;
                                 self.check_rec(nearest, nearest_tile, is_old_pipe, is_leak_detected)
                             }
                         } else {
@@ -179,7 +179,7 @@ mod sample_tests {
     }
 
     #[rustfmt::skip]
-    const TEST_CASES: &'static [(&'static[& str], bool)] = &[
+    const TEST_CASES: &[(&[& str], bool)] = &[
         (&["╋━━┓", 
            "┃..┃", 
            "┛..┣"], true),
@@ -233,6 +233,7 @@ mod sample_tests {
     ];
 }
 
+//noinspection ALL,RsAssertEqual
 fn run_test(pmap: &[&str], answer: bool) {
     let test_result = check_pipe(pmap);
     assert!(

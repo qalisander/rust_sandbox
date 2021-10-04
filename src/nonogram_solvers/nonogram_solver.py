@@ -3,15 +3,19 @@ import itertools;
 from enum import Enum, IntEnum
 import unittest;
 
+
 # TODO: benchmark and try call rust
+# https://stackoverflow.com/questions/41770791/arrays-in-python-are-assigned-by-value-or-by-reference
 class Bit(IntEnum):
     FILLED = 1
     EMPTY = 0
+
 
 class FlatClues:
     def __init__(self, stack):
         self.stack = stack
         self.index = 0
+
 
 def get_permutations(clues, size):
     def get_permutations_rec(clues, init_offset: int, size):
@@ -31,7 +35,8 @@ def get_permutations(clues, size):
 
                 yield permutations
 
-    return map(tuple, get_permutations_rec(clues, 0, size))
+    return get_permutations_rec(clues, 0, size)
+
 
 def can_be_applied(processed_top_clues, permutation):
     for (permutation_bit, clues) in zip(permutation, processed_top_clues):
@@ -51,6 +56,7 @@ def can_be_applied(processed_top_clues, permutation):
                 return False
 
     return True
+
 
 def apply_permutation(processed_top_clues, permutation):
     def apply(clues, permutation_bit):
@@ -89,14 +95,14 @@ def solve(clues):
     permutation_stack = []
 
     def solve_rec(top_clues, left_clues, permutation_stack):
-        clues_len = len(left_clues) # NOTE: T
+        clues_len = len(left_clues)  # NOTE: T
         current_clues_index = len(permutation_stack)
         for permutation in get_permutations(left_clues[current_clues_index], clues_len):
             if not can_be_applied(top_clues, permutation):
                 continue
 
             altered_bits = apply_permutation(top_clues, permutation)
-            permutation_stack.append(permutation)
+            permutation_stack.append(tuple(permutation))
             if len(permutation_stack) == clues_len or solve_rec(top_clues, left_clues, permutation_stack):
                 return True
 
