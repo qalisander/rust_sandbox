@@ -145,7 +145,6 @@ pub fn solve_nonogram<const T: usize>(
         permutations_stack: &mut Vec<BitVec>,
     ) -> bool {
         let current_permutation_index = permutations_stack.len();
-        let next_possible_bits = top_clues.get_next_possible_bits();
         let next_mandatory_bits = top_clues.get_next_mandatory_bits();
         let next_banned_bits = top_clues.get_next_banned_bits();
 
@@ -153,7 +152,7 @@ pub fn solve_nonogram<const T: usize>(
 //        dbg!(&next_banned_bits);
 //        dbg!(&permutations_stack);
 
-        for permutation in get_permutations(&next_possible_bits, left_clues[current_permutation_index], next_mandatory_bits, next_banned_bits) {
+        for permutation in get_permutations::<T>(left_clues[current_permutation_index], next_mandatory_bits, next_banned_bits) {
             let altered_bits = top_clues.apply_permutation(&permutation);
             permutations_stack.push(permutation);
 
@@ -169,26 +168,23 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8], next_mandatory_bits: BitVec, next_banned_bits: BitVec) -> Box<dyn Iterator<Item=BitVec> + 'a> {
+fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: BitVec, next_banned_bits: BitVec) -> Box<dyn Iterator<Item=BitVec> + 'a> {
     let permutation = BitVec::from_elem(T, EMPTY);
-    return get_permutations_rec(permutation, next_possible_bits, clues, 0, next_mandatory_bits, next_banned_bits);
+    return get_permutations_rec::<T>(permutation, clues, 0, next_mandatory_bits, next_banned_bits);
 
     fn get_permutations_rec<'a, const T: usize>(
         permutation: BitVec,
-        next_possible_bits: &'a [Shift; T], // TODO: use bitvec
         clues: &'a [u8],
         init_offset: usize,
         next_mandatory_bits: BitVec,
         next_banned_bits: BitVec,
-    ) -> Box<dyn Iterator<Item = BitVec> + 'a> { // TODO: return bitsets not array https://docs.rs/bit-set/0.5.0/bit_set/struct.BitSet.html
+    ) -> Box<dyn Iterator<Item = BitVec> + 'a> {
         let current_clue = match clues.first() {
             None => return Box::new(iter::once(permutation)),
             Some(&clue) => clue as usize,
         };
         let clues_sum = clues.iter().sum::<u8>() as usize;
         let clues_borders = clues.len() - 1;
-
-
 
         let iter = (0..T + 1 - (init_offset + clues_sum + clues_borders)).filter_map(move |offset| {
             let offset = init_offset + offset;
@@ -200,19 +196,23 @@ fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clu
             }
 
             let mut next_mandatory_bits_tmp = next_mandatory_bits.clone();
+            next_mandatory_bits_tmp.difference(&permutation);
             next_mandatory_bits_tmp.truncate(current_clue + offset + 1);
-
-            let next_mandatory_set = BitSet::from_bit_vec(next_mandatory_bits_tmp.clone());
-            let mut next_banned_set = BitSet::from_bit_vec(next_banned_bits.clone());
-            let permutation_set = BitSet::from_bit_vec(permutation.clone());
-//            if T > current_clue + offset {
-//                next_banned_set.insert(current_clue + offset); // TODO: why?
-//            }
-
-            let has_zeroes_valid = next_banned_set.is_disjoint(&permutation_set);
+            let has_ones_valid = next_mandatory_bits_tmp.none();
 
 
-            let has_ones_valid = next_mandatory_set.is_subset(&permutation_set);
+            let mut next_banned_bits_tmp = next_banned_bits.clone();
+            next_banned_bits_tmp.and(&permutation);
+            let has_zeroes_valid = next_banned_bits_tmp.none();
+
+//            let next_mandatory_set = BitSet::from_bit_vec(next_mandatory_bits_tmp.clone());
+//            let mut next_banned_set = BitSet::from_bit_vec(next_banned_bits.clone());
+//            let permutation_set = BitSet::from_bit_vec(permutation.clone());
+//
+//            let has_zeroes_valid = next_banned_set.is_disjoint(&permutation_set);
+
+
+//            let has_ones_valid = next_mandatory_set.is_subset(&permutation_set);
 
 //            if *clues == [2, 1] {
 //                dbg!(&next_mandatory_set);
@@ -220,23 +220,9 @@ fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clu
 //                dbg!(&permutation_set);
 //            }
 
-//            let zeroes_range = init_offset..offset; // TODO: predict with one at the end
-//            let has_zeroes_valid = next_possible_bits[zeroes_range].iter().all(|shift|{
-//                matches!(shift, Shift::Available | Shift::Banned)
-//            });
-//
-//            let has_ones_valid = next_possible_bits[ones_range.clone()].iter().all(|shift| {
-//                matches!(shift, Shift::Available | Shift::Mandatory)
-//            });
-//
-//            let has_last_zero_valid = match next_possible_bits.get(current_clue + offset) {
-//                None => true,
-//                Some(&shift) => matches!(shift, Shift::Available | Shift::Banned)
-//            };
-
-            if has_ones_valid && has_zeroes_valid/*&& has_last_zero_valid*/{
-                Some(get_permutations_rec(
-                    permutation, next_possible_bits, &clues[1..], 1 + offset + current_clue, next_mandatory_bits.clone(), next_banned_bits.clone()))
+            if has_ones_valid && has_zeroes_valid{
+                Some(get_permutations_rec::<T>(
+                    permutation, &clues[1..], 1 + offset + current_clue, next_mandatory_bits.clone(), next_banned_bits.clone()))
             } else {
                 None
             }

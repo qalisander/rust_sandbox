@@ -15,7 +15,6 @@ fn transpose_test() {
 #[test]
 fn get_permutations_15_test() {
     let permutations = get_permutations::<15>(
-        &[Shift::Available; 15],
         &[1, 2, 3, 1],
         BitVec::from_elem(15, false),
         BitVec::from_elem(15, false),
@@ -39,7 +38,6 @@ fn get_permutations_15_test() {
 #[test]
 fn get_permutations_5_test() {
     let permutations = get_permutations::<5>(
-        &[Shift::Available; 5],
         &[2, 2],
         BitVec::from_elem(5, false),
         BitVec::from_elem(5, false),
@@ -50,7 +48,6 @@ fn get_permutations_5_test() {
     assert_eq!(permutations.first().unwrap(), &[1u8, 1, 0, 1, 1]);
 
     let permutations = get_permutations::<5>(
-        &[Shift::Available; 5],
         &[2, 1],
         BitVec::from_elem(5, false),
         BitVec::from_elem(5, false),
@@ -64,7 +61,6 @@ fn get_permutations_5_test() {
 #[test]
 fn get_permutations_single_clue_test() {
     let permutations = get_permutations::<15>(
-        &[Shift::Available; 15],
         &[1],
         BitVec::from_elem(15, false),
         BitVec::from_elem(15, false),
