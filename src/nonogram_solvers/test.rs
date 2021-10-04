@@ -1,5 +1,8 @@
 #[cfg(test)]
-use crate::nonogram_solvers::*;
+use crate::nonogram_solvers::nonogram_solver_bitsets::{solve_nonogram, get_permutations};
+use std::fmt::Debug;
+use bit_set::BitSet;
+use itertools::Itertools;
 extern crate test;
 use self::test::Bencher;
 use super::*;
@@ -272,3 +275,30 @@ pub const CLUES_25: ([&[u8]; 25], [&[u8]; 25]) = (
         &[1, 7, 1],
     ],
 );
+
+fn print<T: Debug>(field: impl IntoIterator<Item = impl IntoIterator<Item = T>>) {
+    println!(
+        "{}",
+        field
+            .into_iter()
+            .map(|collection| format!("{:?}", collection.into_iter().collect_vec()))
+            .join("\n")
+    );
+}
+
+fn transpose<T: Clone>(
+    matrix: impl IntoIterator<Item = impl IntoIterator<Item = T>>,
+) -> impl Iterator<Item = impl Iterator<Item = T>> {
+    let mut iters = matrix
+        .into_iter()
+        .map(|iter| iter.into_iter())
+        .collect_vec(); // TODO: inte_iter() type is asent. Bug
+
+    (0..iters.len()).map(move |_| {
+        iters
+            .iter_mut()
+            .filter_map(|iter| iter.next())
+            .collect_vec()
+            .into_iter()
+    })
+}

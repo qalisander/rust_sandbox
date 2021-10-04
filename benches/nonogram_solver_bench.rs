@@ -1,14 +1,19 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use rust_lab::nonogram_solvers::solve_nonogram;
+use rust_lab::nonogram_solvers::{nonogram_solver_bitsets, nonogram_solver_slice};
 use rust_lab::nonogram_solvers::test::CLUES_15;
 
 //https://bheisler.github.io/criterion.rs/book/user_guide/advanced_configuration.html
 
 fn nonogram_solover_bench(c: &mut Criterion) {
-    c.benchmark_group("nonogram_solver_bench")
+    c.benchmark_group("Nonogram solver benches")
         .sample_size(20)
-        .bench_function("nonogram_solover_bench", |b| {
-            b.iter(|| solve_nonogram(CLUES_15))
+        // time:   [244.41 ms 245.48 ms 246.44 ms]
+        .bench_function("nonogram_solover_bitsets", |b| {
+            b.iter(|| nonogram_solver_bitsets::solve_nonogram(CLUES_15))
+        })
+        // time:   [111.08 ms 111.41 ms 111.69 ms]
+        .bench_function("nonogram_solover_slice", |b| {
+            b.iter(|| nonogram_solver_slice::solve_nonogram(CLUES_15))
         });
 }
 
