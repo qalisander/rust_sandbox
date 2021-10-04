@@ -41,7 +41,7 @@ impl<const T: usize> From<[&[u8]; T]> for Clues<T> {
 }
 
 // TODO: prrlly remove const T, store vec only and check len as invariant
-
+// TODO: write some benchmarks with criterioon
 
 
 impl<const T: usize> Clues<T> {
@@ -50,7 +50,7 @@ impl<const T: usize> Clues<T> {
             match clues.next() {
                 Some(&FILLED) => {
                     match clues.current() {
-                        None | Some(&EMPTY) => { Shift::Available} // BUG invalid indexing
+                        None | Some(&EMPTY) => { Shift::Available} // TODO: add remaining capacity
                         Some(&FILLED) => { Shift::Mandatory },
                         _ => unreachable!() // TODO: use EMPTY FILLED enums
                     }},
@@ -264,7 +264,7 @@ pub mod basic_tests {
     }
 
     #[bench]
-    #[ignore]
+   #[ignore]
     fn bench15(bencher: &mut Bencher) {
         bencher.iter(|| solve_nonogram(CLUES_15));
     }
@@ -277,11 +277,12 @@ pub mod basic_tests {
     #[test]
     #[ignore]
     fn test50() {
-        const COUNT: usize = 50;
-        let arr = (1..6).collect_vec();
-        let arr = (1..6).rev().collect_vec();
-        let keys = (0..COUNT).map(|_| &arr[..]).collect_vec();
-        print(solve_nonogram::<COUNT>((keys.clone().try_into().unwrap(), keys.try_into().unwrap())));
+        const COUNT: usize = 35;
+        let arr_top = (1..6).collect_vec();
+        let arr_left = (1..6).rev().collect_vec();
+        let keys_top = (0..COUNT).map(|_| &arr_top[..]).collect_vec();
+        let keys_left = (0..COUNT).map(|_| &arr_left[..]).collect_vec();
+        print(solve_nonogram::<COUNT>((keys_top.try_into().unwrap(), keys_left.try_into().unwrap())));
     }
 
     const CLUES_1: ([&[u8]; 5], [&[u8]; 5]) = (
