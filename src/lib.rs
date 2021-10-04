@@ -17,3 +17,4 @@ mod three_pass_compiler;
 mod simple_interactive_interpreter;
 mod test_frameworks_test;
 pub mod nonogram_solvers;
+mod evaluate_mathematical_expression;
