@@ -3,15 +3,16 @@ use itertools::Itertools;
 use std::iter;
 use std::convert::TryInto;
 use std::fmt::{Debug, Display};
+use bit_vec::BitVec;
 //use trace::trace;
 //trace::init_depth_var!();
 
 //https://www.codewars.com/kata/5a479247e6be385a41000064/train/rust
 //TODO: try run Rust code from python test
 
-type Bit = u8;
-const FILLED: Bit = 1;
-const EMPTY: Bit = 0;
+type Bit = bool;
+const FILLED: Bit = true;
+const EMPTY: Bit = false;
 
 #[derive(Debug, Copy, Clone)]
 enum Shift {
@@ -28,8 +29,8 @@ impl<const T: usize> From<[&[u8]; T]> for Clues<T> {
         let slice_vec = from.iter().map(|&clues|
             FlatClues {
                 stack: clues.iter()
-                    .flat_map(|&clue| std::iter::repeat(1).take(clue.into()).chain([0]))
-                    .collect_vec(),
+                    .flat_map(|&clue| std::iter::repeat(true).take(clue.into()).chain([false]))
+                    .collect(),
                 index: 0,
             }).collect_vec().try_into().unwrap();
         Clues(slice_vec)
@@ -42,31 +43,31 @@ impl<const T: usize> Clues<T> {
     fn get_next_possible_bits(&self) -> Box<[Shift; T]>{
         let slice = self.0.iter().map(|clues| {
             match clues.next() {
-                Some(&FILLED) => {
+                Some(FILLED) => {
                     match clues.current() {
-                        None | Some(&EMPTY) => { Shift::Available} // TODO: add remaining capacity
-                        Some(&FILLED) => { Shift::Mandatory },
+                        None | Some(EMPTY) => { Shift::Available} // TODO: add remaining capacity
+                        Some(FILLED) => { Shift::Mandatory },
                         _ => unreachable!() // TODO: use EMPTY FILLED enums
                     }},
-                Some(&EMPTY) | None => Shift::Banned,
+                Some(EMPTY) | None => Shift::Banned,
                 _ => unreachable!(),
             }
         }).collect_vec().try_into().unwrap();
         Box::new(slice)
     }
 
-    fn apply_permutation(&mut self, permutation: &[Bit; T]) -> Vec<bool> {
+    fn apply_permutation(&mut self, permutation: &BitVec) -> BitVec {
         self.0.iter_mut().zip(permutation).map(|(clues, permutation_bit)|
-            match (clues.next(), *permutation_bit) {
-                (Some(&EMPTY), EMPTY) | (_, FILLED) if clues.stack.len() > 1 => {
+            match (clues.next(), permutation_bit) {
+                (Some(EMPTY), EMPTY) | (_, FILLED) if clues.stack.len() > 1 => {
                     clues.index += 1;
                     true
                 }
                 _ => false,
-            }).collect_vec()
+            }).collect()
     }
 
-    fn undo_permutation(&mut self, altered_bits: Vec<bool>) {
+    fn undo_permutation(&mut self, altered_bits: BitVec) {
         for (clues, altered_bit) in self.0.iter_mut().zip(altered_bits) {
             if altered_bit {
                 clues.index -= 1;
@@ -77,32 +78,34 @@ impl<const T: usize> Clues<T> {
 
 #[derive(Debug)]
 struct FlatClues {
-    stack: Vec<Bit>,
+    stack: BitVec,
     index: usize,
 }
 
 impl FlatClues {
-    fn next(&self) -> Option<&Bit> {
+    fn next(&self) -> Option<bool> {
         self.stack.get(self.index)
     }
-    fn current(&self) -> Option<&Bit> {
+    fn current(&self) -> Option<bool> {
         self.stack.get(self.index.checked_sub(1)?)
     }
 }
 
 pub fn solve_nonogram<const T: usize>(
-    (top_clues, left_clues): ([&[Bit]; T], [&[Bit]; T]),
-) -> [[Bit; T]; T] {
+    (top_clues, left_clues): ([&[u8]; T], [&[u8]; T]),
+) -> [[u8; T]; T] {
     let mut processed_top_clues = Clues::from(top_clues);
-    let mut permutations_stack: Vec<[u8; T]> = Vec::with_capacity(T);
+    let mut permutations_stack: Vec<BitVec> = Vec::with_capacity(T);
 
-    let is_solved = solve_nongram_rec(
+    let is_solved = solve_nongram_rec::<T>(
         &mut processed_top_clues,
         &left_clues,
         &mut permutations_stack);
 
     if is_solved {
-        return permutations_stack.try_into().unwrap(); // https://stackoverflow.com/questions/29570607/is-there-a-good-way-to-convert-a-vect-to-an-array
+        return permutations_stack.iter().map(|bit_vec| {
+            bit_vec.iter().map(|bit| bit as u8).collect_vec().try_into().unwrap()
+        }).collect_vec().try_into().unwrap(); // https://stackoverflow.com/questions/29570607/is-there-a-good-way-to-convert-a-vect-to-an-array
     } else {
         panic!("Solution not found")
     };
@@ -110,14 +113,14 @@ pub fn solve_nonogram<const T: usize>(
     fn solve_nongram_rec<const T: usize>(
         top_clues: &mut Clues<T>,
         left_clues: &[&[u8]; T],
-        permutations_stack: &mut Vec<[u8; T]>,
+        permutations_stack: &mut Vec<BitVec>,
     ) -> bool {
         let current_permutation_index = permutations_stack.len();
         let next_possible_bits = top_clues.get_next_possible_bits();
 
         for permutation in get_permutations(&next_possible_bits,left_clues[current_permutation_index]) {
             let altered_bits = top_clues.apply_permutation(&permutation);
-            permutations_stack.push(*permutation);
+            permutations_stack.push(permutation);
 
             if permutations_stack.len() == T
                 || solve_nongram_rec(top_clues, left_clues, permutations_stack)
@@ -131,16 +134,16 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=Box<[u8; T]>> + 'a> {
-    let permutation = Box::new([0u8; T]);
+fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=BitVec> + 'a> {
+    let permutation = BitVec::from_elem(T, EMPTY);
     return get_permutations_rec(permutation, next_possible_bits, clues, 0);
 
     fn get_permutations_rec<'a, const T: usize>(
-        permutation: Box<[u8; T]>,
-        next_possible_bits: &'a [Shift; T],
+        permutation: BitVec,
+        next_possible_bits: &'a [Shift; T], // TODO: use bitvec
         clues: &'a [u8],
         init_offset: usize,
-    ) -> Box<dyn Iterator<Item = Box<[u8; T]>> + 'a> { // TODO: return bitsets not array https://docs.rs/bit-set/0.5.0/bit_set/struct.BitSet.html
+    ) -> Box<dyn Iterator<Item = BitVec> + 'a> { // TODO: return bitsets not array https://docs.rs/bit-set/0.5.0/bit_set/struct.BitSet.html
         let current_clue = match clues.first() {
             None => return Box::new(iter::once(permutation)),
             Some(&clue) => clue as usize,
@@ -168,8 +171,10 @@ fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clu
 
             if has_ones_valid && has_zeroes_valid && has_last_zero_valid{
                 let mut permutation = permutation.clone();
-                permutation[ones_range].fill(1);
-                Some(get_permutations_rec(permutation.clone(), next_possible_bits, &clues[1..], 1 + offset + current_clue))
+                for index in ones_range {
+                    permutation.set(index, true);
+                }
+                Some(get_permutations_rec(permutation, next_possible_bits, &clues[1..], 1 + offset + current_clue))
             } else {
                 None
             }

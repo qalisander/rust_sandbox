@@ -15,7 +15,7 @@ fn transpose_test() {
 #[test]
 fn get_permutations_15_test() {
     let permutations = get_permutations::<15>(&[Shift::Available; 15], &[1, 2, 3, 1])
-        .map(|perm| perm.to_vec())
+        .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
         .collect_vec();
 //        print(&permutations);
     assert_eq!(
@@ -34,7 +34,7 @@ fn get_permutations_15_test() {
 #[test]
 fn get_permutations_5_test() {
     let permutations = get_permutations::<5>(&[Shift::Available; 5], &[2, 2])
-        .map(|perm| perm.to_vec())
+        .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
         .collect_vec();
 
     assert_eq!(permutations.first().unwrap(), &[1u8, 1, 0, 1, 1]);
@@ -43,7 +43,7 @@ fn get_permutations_5_test() {
 #[test]
 fn get_permutations_single_clue_test() {
     let permutations = get_permutations::<15>(&[Shift::Available; 15], &[1])
-        .map(|perm| perm.to_vec())
+        .map(|perm| perm.iter().map(|bit| bit as u8).collect_vec())
         .collect_vec();
     assert_eq!(
         permutations.first().unwrap(),
