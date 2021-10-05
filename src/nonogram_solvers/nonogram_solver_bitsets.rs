@@ -33,19 +33,19 @@ impl<const T: usize> From<[&[u8]; T]> for Clues<T> {
 impl<const T: usize> Clues<T> {
     fn get_next_mandatory_bits(&self) -> BitVec {
         self.0.iter().map(|clues| {
-            matches!((clues.next(), clues.current()), (Some(FILLED), Some(FILLED)))
+            matches!((clues.current_bit(), clues.next_bit()), (Some(FILLED), Some(FILLED)))
         }).collect()
     }
 
     fn get_next_banned_bits(&self) -> BitVec {
         self.0.iter().map(|clues| {
-            matches!(clues.next(), Some(EMPTY) | None)
+            matches!(clues.next_bit(), Some(EMPTY) | None)
         }).collect()
     }
 
     fn apply_permutation(&mut self, permutation: &BitVec) -> BitVec {
         self.0.iter_mut().zip(permutation).map(|(clues, permutation_bit)|
-            match (clues.next(), permutation_bit) {
+            match (clues.next_bit(), permutation_bit) {
                 (Some(EMPTY), EMPTY) | (_, FILLED) if clues.stack.len() > 1 => {
                     clues.index += 1;
                     true
@@ -70,10 +70,10 @@ struct FlatClues {
 }
 
 impl FlatClues {
-    fn next(&self) -> Option<bool> {
+    fn next_bit(&self) -> Option<bool> {
         self.stack.get(self.index)
     }
-    fn current(&self) -> Option<bool> {
+    fn current_bit(&self) -> Option<bool> {
         self.stack.get(self.index.checked_sub(1)?)
     }
 }

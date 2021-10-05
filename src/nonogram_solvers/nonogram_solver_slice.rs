@@ -14,8 +14,8 @@ const EMPTY: Bit = 0;
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) enum Shift {
-    Available,
-    Mandatory,
+    Available(usize),
+    Mandatory(usize),
     Banned,
 }
 
@@ -36,13 +36,13 @@ impl<const T: usize> From<[&[u8]; T]> for Clues<T> {
 }
 
 impl<const T: usize> Clues<T> {
-    fn get_next_possible_bits(&self) -> Box<[Shift; T]>{
+    fn get_next_possible_bit_shifts(&self) -> Box<[Shift; T]>{
         let slice = self.0.iter().map(|clues| {
-            match clues.next() {
+            match clues.next_bit() {
                 Some(&FILLED) => {
-                    match clues.current() {
-                        None | Some(&EMPTY) => { Shift::Available} // TODO: add remaining capacity
-                        Some(&FILLED) => { Shift::Mandatory },
+                    match clues.current_bit() {
+                        None | Some(&EMPTY) => { Shift::Available(clues.stack.len() - clues.index - 1)} // TODO: add remaining capacity
+                        Some(&FILLED) => { Shift::Mandatory(clues.stack.len() - clues.index - 1) },
                         _ => unreachable!() // TODO: use EMPTY FILLED enums
                     }},
                 Some(&EMPTY) | None => Shift::Banned,
@@ -54,7 +54,7 @@ impl<const T: usize> Clues<T> {
 
     fn apply_permutation(&mut self, permutation: &[Bit; T]) -> Vec<bool> {
         self.0.iter_mut().zip(permutation).map(|(clues, permutation_bit)|
-            match (clues.next(), *permutation_bit) {
+            match (clues.next_bit(), *permutation_bit) {
                 (Some(&EMPTY), EMPTY) | (_, FILLED) if clues.stack.len() > 1 => {
                     clues.index += 1;
                     true
@@ -79,10 +79,10 @@ struct FlatClues {
 }
 
 impl FlatClues {
-    fn next(&self) -> Option<&Bit> {
+    fn next_bit(&self) -> Option<&Bit> {
         self.stack.get(self.index)
     }
-    fn current(&self) -> Option<&Bit> {
+    fn current_bit(&self) -> Option<&Bit> {
         self.stack.get(self.index.checked_sub(1)?)
     }
 }
@@ -110,7 +110,17 @@ pub fn solve_nonogram<const T: usize>(
         permutations_stack: &mut Vec<[u8; T]>,
     ) -> bool {
         let current_permutation_index = permutations_stack.len();
-        let next_possible_bits = top_clues.get_next_possible_bits();
+        let next_possible_bits = top_clues.get_next_possible_bit_shifts();
+
+        let has_not_enough_len = next_possible_bits.iter().any(|shift| {
+            match shift {
+                Shift::Available(size) | Shift::Mandatory(size) => *size > T - current_permutation_index,
+                _ => false,
+            }
+        });
+        if has_not_enough_len {
+            return false;
+        }
 
         for permutation in get_permutations(&next_possible_bits,left_clues[current_permutation_index]) {
             let altered_bits = top_clues.apply_permutation(&permutation);
@@ -129,6 +139,7 @@ pub fn solve_nonogram<const T: usize>(
 }
 
 pub(crate) fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=[u8; T]> + 'a> {
+
     let permutation = [0u8; T];
     return get_permutations_rec(permutation, next_possible_bits, clues, 0);
 
@@ -152,13 +163,13 @@ pub(crate) fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shi
             let has_zeroes_valid = next_possible_bits[zeroes_range].iter()
                 .chain(next_possible_bits.get(current_clue + offset))
                 .all(|shift| {
-                    matches!(shift, Shift::Available | Shift::Banned)
+                    matches!(shift, Shift::Available(_) | Shift::Banned)
                 });
 
             let ones_range = offset..current_clue + offset;
             let has_ones_valid = next_possible_bits[ones_range.clone()].iter()
                 .all(|shift| {
-                    matches!(shift, Shift::Available | Shift::Mandatory)
+                    matches!(shift, Shift::Available(_) | Shift::Mandatory(_))
                 });
 
             if has_ones_valid && has_zeroes_valid {
