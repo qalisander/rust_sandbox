@@ -11,7 +11,7 @@ fn nonogram_solover_bench(c: &mut Criterion) {
         .bench_function("nonogram_solover_bitsets", |b| {
             b.iter(|| nonogram_solver_bitsets::solve_nonogram(CLUES_15))
         })
-        // time:   [101.99 ms 102.62 ms 103.14 ms]
+        // time:   [92.871 ms 93.398 ms 94.147 ms]
         .bench_function("nonogram_solover_slice", |b| {
             b.iter(|| nonogram_solver_slice::solve_nonogram(CLUES_15))
         });

@@ -114,7 +114,7 @@ pub fn solve_nonogram<const T: usize>(
 
         for permutation in get_permutations(&next_possible_bits,left_clues[current_permutation_index]) {
             let altered_bits = top_clues.apply_permutation(&permutation);
-            permutations_stack.push(*permutation);
+            permutations_stack.push(permutation);
 
             if permutations_stack.len() == T
                 || solve_nongram_rec(top_clues, left_clues, permutations_stack)
@@ -128,16 +128,16 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-pub(crate) fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=Box<[u8; T]>> + 'a> {
-    let permutation = Box::new([0u8; T]);
+pub(crate) fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=[u8; T]> + 'a> {
+    let permutation = [0u8; T];
     return get_permutations_rec(permutation, next_possible_bits, clues, 0);
 
     fn get_permutations_rec<'a, const T: usize>(
-        permutation: Box<[u8; T]>,
+        permutation: [u8; T],
         next_possible_bits: &'a [Shift; T],
         clues: &'a [u8],
         init_offset: usize,
-    ) -> Box<dyn Iterator<Item = Box<[u8; T]>> + 'a> {
+    ) -> Box<dyn Iterator<Item = [u8; T]> + 'a> {
         let current_clue = match clues.first() {
             None => return Box::new(iter::once(permutation)),
             Some(&clue) => clue as usize,
