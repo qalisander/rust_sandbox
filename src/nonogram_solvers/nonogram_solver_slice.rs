@@ -13,7 +13,7 @@ const FILLED: Bit = 1;
 const EMPTY: Bit = 0;
 
 #[derive(Debug, Copy, Clone)]
-enum Shift {
+pub(crate) enum Shift {
     Available,
     Mandatory,
     Banned,
@@ -128,7 +128,7 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=Box<[u8; T]>> + 'a> {
+pub(crate) fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clues: &'a [u8]) -> Box<dyn Iterator<Item=Box<[u8; T]>> + 'a> {
     let permutation = Box::new([0u8; T]);
     return get_permutations_rec(permutation, next_possible_bits, clues, 0);
 
@@ -137,7 +137,7 @@ fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clu
         next_possible_bits: &'a [Shift; T],
         clues: &'a [u8],
         init_offset: usize,
-    ) -> Box<dyn Iterator<Item = Box<[u8; T]>> + 'a> { // TODO: return bitsets not array https://docs.rs/bit-set/0.5.0/bit_set/struct.BitSet.html
+    ) -> Box<dyn Iterator<Item = Box<[u8; T]>> + 'a> {
         let current_clue = match clues.first() {
             None => return Box::new(iter::once(permutation)),
             Some(&clue) => clue as usize,
@@ -148,25 +148,23 @@ fn get_permutations<'a, const T: usize >(next_possible_bits: &'a [Shift; T], clu
         let iter = (0..T + 1 - (init_offset + clues_sum + clues_borders)).filter_map(move |offset| {
             let offset = init_offset + offset;
 
-            let zeroes_range = init_offset..offset; // TODO: predict with one at the end
-            let has_zeroes_valid = next_possible_bits[zeroes_range].iter().all(|shift|{
-                matches!(shift, Shift::Available | Shift::Banned)
-            });
+            let zeroes_range = init_offset..offset;
+            let has_zeroes_valid = next_possible_bits[zeroes_range].iter()
+                .chain(next_possible_bits.get(current_clue + offset))
+                .all(|shift| {
+                    matches!(shift, Shift::Available | Shift::Banned)
+                });
 
             let ones_range = offset..current_clue + offset;
-            let has_ones_valid = next_possible_bits[ones_range.clone()].iter().all(|shift| {
-                matches!(shift, Shift::Available | Shift::Mandatory)
-            });
+            let has_ones_valid = next_possible_bits[ones_range.clone()].iter()
+                .all(|shift| {
+                    matches!(shift, Shift::Available | Shift::Mandatory)
+                });
 
-            let has_last_zero_valid = match next_possible_bits.get(current_clue + offset) {
-                None => true,
-                Some(&shift) => matches!(shift, Shift::Available | Shift::Banned)
-            };
-
-            if has_ones_valid && has_zeroes_valid && has_last_zero_valid{
+            if has_ones_valid && has_zeroes_valid {
                 let mut permutation = permutation.clone();
                 permutation[ones_range].fill(1);
-                Some(get_permutations_rec(permutation.clone(), next_possible_bits, &clues[1..], 1 + offset + current_clue))
+                Some(get_permutations_rec(permutation, next_possible_bits, &clues[1..], 1 + offset + current_clue))
             } else {
                 None
             }
