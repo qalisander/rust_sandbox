@@ -1,11 +1,11 @@
 # https://www.codewars.com/kata/5a5072a6145c46568800004d/train/python
-import itertools;
-from enum import Enum, IntEnum
-import unittest;
-
+import itertools
+import time
+from enum import IntEnum
 
 # TODO: benchmark and try call rust
 # https://stackoverflow.com/questions/41770791/arrays-in-python-are-assigned-by-value-or-by-reference
+
 class Bit(IntEnum):
     FILLED = 1
     EMPTY = 0
@@ -17,53 +17,32 @@ class FlatClues:
         self.index = 0
 
 
-class ShiftType(Enum):
-    Available = 1,
-    Mandatory = 2,
-    Banned = 3,
-
-
 class Shift:
-    def __init__(self, type: ShiftType, size=0):
+    def __init__(self, type, size=0):
         self.type = type
         self.size = size
+
+    class Type(IntEnum):
+        Available = 0,
+        Mandatory = 1,
+        Banned = 2,
 
 
 def get_next_possible_bit_shifts(processed_top_clues):
     def get_next_bit_shifts(clues: FlatClues):
         next_index = clues.index
         if len(clues.stack) <= next_index or clues.stack[clues.index] == Bit.EMPTY:
-            return Shift(ShiftType.Banned)
+            return Shift(Shift.Type.Banned)
 
         rest_len = len(clues.stack) - clues.index - 1
         current_index = clues.index - 1
         if 0 > current_index or clues.stack[current_index] == Bit.EMPTY:
-            return Shift(ShiftType.Available, rest_len)
+            return Shift(Shift.Type.Available, rest_len)
 
-        return Shift(ShiftType.Mandatory, rest_len)
+        return Shift(Shift.Type.Mandatory, rest_len)
 
     return [get_next_bit_shifts(processed_top_clue)
             for processed_top_clue in processed_top_clues]
-
-
-# def can_be_applied(processed_top_clues, permutation):
-#     for (permutation_bit, clues) in zip(permutation, processed_top_clues):
-#         if len(clues.stack) > clues.index:
-#             clue_current_bit = clues.stack[clues.index]
-#             if clue_current_bit == permutation_bit:
-#                 continue
-#             if clue_current_bit == Bit.EMPTY:
-#                 return False
-#             if clue_current_bit == Bit.FILLED:
-#                 if len(clues.stack) > clues.index - 1:
-#                     clue_previous_bit = clues.stack[clues.index - 1]
-#                     if clue_previous_bit != Bit.EMPTY:
-#                         return False
-#         else:
-#             if permutation_bit != 0:
-#                 return False
-#
-#     return True
 
 
 def apply_permutation(processed_top_clues, permutation):
@@ -108,7 +87,7 @@ def solve(clues):
         next_possible_bits = get_next_possible_bit_shifts(top_clues)
 
         def has_not_enough_len(shift):
-            has_valid_type = shift.type == ShiftType.Available or shift.type == ShiftType.Mandatory
+            has_valid_type = shift.type == Shift.Type.Available or shift.type == Shift.Type.Mandatory
             return has_valid_type and shift.size > clues_len - current_clues_index
 
         if any(map(has_not_enough_len, next_possible_bits)):
@@ -146,16 +125,18 @@ def get_permutations(next_possible_shifts, clues, size):
 
             zeroes_range = range(init_offset, new_offset)
             has_zeroes_valid = all(
-                [next_possible_shifts[index].type in (ShiftType.Available, ShiftType.Banned) #TODO: use "is"
+                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Banned)  # TODO: use "is"
                  for index in zeroes_range])  # TODO: add range
 
             ones_range = range(new_offset, new_offset + current_clue)
             has_ones_valid = all(
-                [next_possible_shifts[index].type in (ShiftType.Available, ShiftType.Mandatory)
+                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Mandatory)
                  for index in ones_range])
 
-# TODO: use slice
-            has_last_zero_valid = next_possible_shifts[new_offset + current_clue].type in (ShiftType.Available, ShiftType.Banned) \
+            # TODO: use slice
+            last_zero_index = new_offset + current_clue
+            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (
+            Shift.Type.Available, Shift.Type.Banned) \
                 if current_clue + new_offset < len(next_possible_shifts) else True
 
             if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
@@ -169,59 +150,72 @@ def get_permutations(next_possible_shifts, clues, size):
     return get_permutations_rec([0 for _ in range(size)], clues, 0, size)
 
 
-class NonogramSolveTests(unittest.TestCase):
+def test_get_permutations_15():
+    permutations = list(get_permutations([Shift(Shift.Type.Available)] * 15, [1, 2, 3, 1], 15))
+    print(permutations)
+    assert tuple(permutations[0]) == (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0)
+    assert tuple(permutations[-1]) == (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
 
-    def test_test(self):
-        foods = [
-            ["Tomato and Cucumber", "Hummus, Beetroot, and Lettuce"],
-            ["Cheese", "Egg"],
-            ["Ham", "Bacon", "Chicken Club", "Tuna"]
-        ]
-
-        new_foods = [food for sublist in foods for food in sublist]
-        print(new_foods)
-
-        self.assertEqual(1, Bit.FILLED)
-
-    def test_get_permutations_15(self):
-        permutations = list(get_permutations([Shift(ShiftType.Available)] * 15, [1, 2, 3, 1], 15))
-        print(permutations)
-        self.assertCountEqual(permutations[0], (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0))
-        self.assertCountEqual(permutations[-1], (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1))
-
-    def test_solve_15(self):
-        clues = (
-            (
-                (4, 3), (1, 6, 2), (1, 2, 2, 1, 1), (1, 2, 2, 1, 2), (3, 2, 3),
-                (2, 1, 3), (1, 1, 1), (2, 1, 4, 1), (1, 1, 1, 1, 2), (1, 4, 2),
-                (1, 1, 2, 1), (2, 7, 1), (2, 1, 1, 2), (1, 2, 1), (3, 3)
-            ), (
-                (3, 2), (1, 1, 1, 1), (1, 2, 1, 2), (1, 2, 1, 1, 3), (1, 1, 2, 1),
-                (2, 3, 1, 2), (9, 3), (2, 3), (1, 2), (1, 1, 1, 1),
-                (1, 4, 1), (1, 2, 2, 2), (1, 1, 1, 1, 1, 1, 2), (2, 1, 1, 2, 1, 1), (3, 4, 3, 1)
-            )
+def test_solve_15():
+    clues = (
+        (
+            (4, 3), (1, 6, 2), (1, 2, 2, 1, 1), (1, 2, 2, 1, 2), (3, 2, 3),
+            (2, 1, 3), (1, 1, 1), (2, 1, 4, 1), (1, 1, 1, 1, 2), (1, 4, 2),
+            (1, 1, 2, 1), (2, 7, 1), (2, 1, 1, 2), (1, 2, 1), (3, 3)
+        ), (
+            (3, 2), (1, 1, 1, 1), (1, 2, 1, 2), (1, 2, 1, 1, 3), (1, 1, 2, 1),
+            (2, 3, 1, 2), (9, 3), (2, 3), (1, 2), (1, 1, 1, 1),
+            (1, 4, 1), (1, 2, 2, 2), (1, 1, 1, 1, 1, 1, 2), (2, 1, 1, 2, 1, 1), (3, 4, 3, 1)
         )
-        expected_solution = (
-            (0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0),
-            (0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0),
-            (1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0),
-            (1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1),
-            (1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1),
-            (1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1),
-            (0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0),
-            (0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
-            (0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
-            (0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
-            (0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0),
-            (1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0),
-            (1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1),
-            (1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1),
-            (0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1)
-        )
-        solved_solution = solve(clues)
-        print(solved_solution)
-        self.assertEqual(solved_solution, expected_solution)
+    )
+    expected_solution = (
+        (0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0),
+        (0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0),
+        (1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0),
+        (1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1),
+        (1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1),
+        (1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1),
+        (0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0),
+        (0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0),
+        (0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0),
+        (0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0),
+        (0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0),
+        (1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0),
+        (1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1),
+        (1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1),
+        (0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1)
+    )
+    solved_solution = solve(clues)
+    print('\n', *solved_solution, sep='\n')
+    assert solved_solution == expected_solution
 
 
-if __name__ == '__main__':
-    unittest.main()
+
+def test_test():
+    foods = [
+        ["Tomato and Cucumber", "Hummus, Beetroot, and Lettuce"],
+        ["Cheese", "Egg"],
+        ["Ham", "Bacon", "Chicken Club", "Tuna"]
+    ]
+
+    new_foods = [food for sublist in foods for food in sublist]
+    print(new_foods)
+
+    assert 1 == Bit.FILLED
+
+def something(duration=0.000001):
+    """
+    Function that needs some serious benchmarking.
+    """
+    time.sleep(duration)
+    # You may return anything you want, like the result of a computation
+    return 123
+
+def test_my_stuff(benchmark):
+    # benchmark something
+    result = benchmark(something)
+
+    # Extra code, to verify that the run completed correctly.
+    # Sometimes you may want to check the result, fast functions
+    # are no good if they return incorrect results :-)
+    assert result == 123
