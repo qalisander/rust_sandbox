@@ -12,7 +12,7 @@ class Bit(IntEnum):
 
 
 class FlatClues:
-    def __init__(self, stack):
+    def __init__(self, stack: [int]):
         self.stack = stack
         self.index = 0
 
@@ -30,13 +30,14 @@ class Shift:
 
 
 def get_next_possible_bit_shifts(processed_top_clues):
-    def get_next_bit_shifts(clues):
-        if len(clues.stack) <= clues.index:
+    def get_next_bit_shifts(clues: FlatClues):
+        next_index = clues.index
+        if len(clues.stack) <= next_index or clues.stack[clues.index] == Bit.EMPTY:
             return Shift(ShiftType.Banned)
 
         rest_len = len(clues.stack) - clues.index - 1
         current_index = clues.index - 1
-        if len(clues.stack) == current_index or clues.stack[current_index] == Bit.EMPTY:
+        if 0 > current_index or clues.stack[current_index] == Bit.EMPTY:
             return Shift(ShiftType.Available, rest_len)
 
         return Shift(ShiftType.Mandatory, rest_len)
@@ -106,12 +107,12 @@ def solve(clues):
         current_clues_index = len(permutation_stack)
         next_possible_bits = get_next_possible_bit_shifts(top_clues)
 
-        # def has_not_enough_len(shift):
-        #     has_valid_type = shift.type == ShiftType.Available or shift.type == ShiftType.Mandatory
-        #     return has_valid_type and shift.size > clues_len - current_clues_index
-        #
-        # if any(map(has_not_enough_len, next_possible_bits)):
-        #     return False
+        def has_not_enough_len(shift):
+            has_valid_type = shift.type == ShiftType.Available or shift.type == ShiftType.Mandatory
+            return has_valid_type and shift.size > clues_len - current_clues_index
+
+        if any(map(has_not_enough_len, next_possible_bits)):
+            return False
 
         for permutation in get_permutations(next_possible_bits, left_clues[current_clues_index], clues_len):
             altered_bits = apply_permutation(top_clues, permutation)
@@ -145,7 +146,7 @@ def get_permutations(next_possible_shifts, clues, size):
 
             zeroes_range = range(init_offset, new_offset)
             has_zeroes_valid = all(
-                [next_possible_shifts[index].type in (ShiftType.Available, ShiftType.Banned)
+                [next_possible_shifts[index].type in (ShiftType.Available, ShiftType.Banned) #TODO: use "is"
                  for index in zeroes_range])  # TODO: add range
 
             ones_range = range(new_offset, new_offset + current_clue)
@@ -153,10 +154,9 @@ def get_permutations(next_possible_shifts, clues, size):
                 [next_possible_shifts[index].type in (ShiftType.Available, ShiftType.Mandatory)
                  for index in ones_range])
 
-            has_last_zero_valid = next_possible_shifts[new_offset + current_clue].type in (
-            ShiftType.Available, ShiftType.Banned) \
-                if current_clue + new_offset < len(next_possible_shifts) \
-                else True
+# TODO: use slice
+            has_last_zero_valid = next_possible_shifts[new_offset + current_clue].type in (ShiftType.Available, ShiftType.Banned) \
+                if current_clue + new_offset < len(next_possible_shifts) else True
 
             if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
                 new_permutation = list(permutation)  # TODO: use list comprehension
