@@ -3,6 +3,7 @@ import itertools
 import time
 from enum import IntEnum
 
+
 # TODO: benchmark and try call rust
 # https://stackoverflow.com/questions/41770791/arrays-in-python-are-assigned-by-value-or-by-reference
 
@@ -110,8 +111,10 @@ def solve(clues):
         raise BaseException("Solution not found")
 
 
+# quick replacement in numpy https://www.kite.com/python/answers/how-to-replace-elements-of-a-numpy-array-based-on-a-condition-in-python
+
 def get_permutations(next_possible_shifts, clues, size):
-    def get_permutations_rec(permutation, clues, init_offset: int, size):
+    def get_permutations_rec(permutation, clues, init_offset: int, size: int):
         if len(clues) == 0:
             yield permutation
             return
@@ -120,32 +123,38 @@ def get_permutations(next_possible_shifts, clues, size):
         clues_sum = sum(clues)
         clues_borders = len(clues) - 1
 
+        last_zero_index = init_offset + current_clue
+        for i in range(last_zero_index - current_clue, last_zero_index):
+            permutation[i] = 1
+
         for offset in range(1 + size - init_offset - clues_sum - clues_borders):
             new_offset = init_offset + offset
+            last_zero_index = new_offset + current_clue
 
             zeroes_range = range(init_offset, new_offset)
-            has_zeroes_valid = all(
-                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Banned)  # TODO: use "is"
-                 for index in zeroes_range])  # TODO: add range
+            has_zeroes_valid = all(  # TODO: use any
+                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Banned)
+                 for index in zeroes_range])  # TODO: use slice
 
-            ones_range = range(new_offset, new_offset + current_clue)
+            ones_range = range(new_offset, last_zero_index)
             has_ones_valid = all(
                 [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Mandatory)
                  for index in ones_range])
 
-            # TODO: use slice
-            last_zero_index = new_offset + current_clue
-            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (
-            Shift.Type.Available, Shift.Type.Banned) \
-                if current_clue + new_offset < len(next_possible_shifts) else True
+            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (Shift.Type.Available, Shift.Type.Banned) \
+                    if last_zero_index < len(next_possible_shifts) else True
 
             if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
-                new_permutation = list(permutation)  # TODO: use list comprehension
-                for i in ones_range:
-                    new_permutation[i] = 1
-
-                for perm in get_permutations_rec(new_permutation, clues[1:], 1 + new_offset + current_clue, size):
+                for perm in get_permutations_rec(permutation, clues[1:], 1 + new_offset + current_clue, size):
                     yield perm
+
+            permutation[new_offset] = 0
+            if len(permutation) > last_zero_index:
+                permutation[last_zero_index] = 1
+
+        for i in range(last_zero_index - current_clue, last_zero_index):
+            permutation[i] = 0
+
 
     return get_permutations_rec([0 for _ in range(size)], clues, 0, size)
 
@@ -155,6 +164,7 @@ def test_get_permutations_15():
     print(permutations)
     assert tuple(permutations[0]) == (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0)
     assert tuple(permutations[-1]) == (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
+
 
 def test_solve_15():
     clues = (
@@ -190,7 +200,6 @@ def test_solve_15():
     assert solved_solution == expected_solution
 
 
-
 def test_test():
     foods = [
         ["Tomato and Cucumber", "Hummus, Beetroot, and Lettuce"],
@@ -203,6 +212,7 @@ def test_test():
 
     assert 1 == Bit.FILLED
 
+
 def something(duration=0.000001):
     """
     Function that needs some serious benchmarking.
@@ -210,6 +220,7 @@ def something(duration=0.000001):
     time.sleep(duration)
     # You may return anything you want, like the result of a computation
     return 123
+
 
 def test_my_stuff(benchmark):
     # benchmark something
