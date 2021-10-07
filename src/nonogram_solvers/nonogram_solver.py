@@ -24,31 +24,17 @@ class ShiftType(Enum):
     Banned = 2,
 
 
-# Shift = NewType("Shift", Shift)
-
-# class Shift:
-#     def __init__(self, type, size=0):
-#         self.type = type
-#         self.size = size
-#
-#     class Type(IntEnum):
-#         Available = 0,
-#         Mandatory = 1,
-#         Banned = 2,
-
-
 def get_next_possible_bit_shifts(processed_top_clues):
     def get_next_bit_shifts(clues: FlatClues):
         next_index = clues.index
         if len(clues.stack) <= next_index or clues.stack[clues.index] == Bit.EMPTY:
-            return ShiftType.Banned, 0
+            return ShiftType.Banned
 
-        rest_len = len(clues.stack) - clues.index - 1
         current_index = clues.index - 1
         if 0 > current_index or clues.stack[current_index] == Bit.EMPTY:
-            return ShiftType.Available, rest_len
+            return ShiftType.Available
 
-        return ShiftType.Mandatory, rest_len
+        return ShiftType.Mandatory
 
     return [get_next_bit_shifts(processed_top_clue)
             for processed_top_clue in processed_top_clues]
@@ -93,14 +79,13 @@ def solve(clues):
     def solve_rec(top_clues, left_clues, permutation_stack):
         clues_len = len(left_clues)  # NOTE: T
         current_clues_index = len(permutation_stack)
-        next_possible_bits = get_next_possible_bit_shifts(top_clues)
 
-        def has_not_enough_len(shift):
-            _, size = shift
-            return size > clues_len - current_clues_index
-
-        if any(map(has_not_enough_len, next_possible_bits)):
+        has_not_enough_len = any(
+            len(clues.stack) - clues.index - 1 > clues_len - current_clues_index for clues in top_clues)
+        if has_not_enough_len:
             return False
+
+        next_possible_bits = get_next_possible_bit_shifts(top_clues)
 
         for permutation in get_permutations(next_possible_bits, left_clues[current_clues_index], clues_len):
             altered_bits = apply_permutation(top_clues, permutation)
@@ -135,24 +120,21 @@ def get_permutations(next_possible_shifts, clues, size):
         for i in range(last_zero_index - current_clue, last_zero_index):
             permutation[i] = 1
 
-        for offset in range(1 + size - init_offset - clues_sum - clues_borders):
-            new_offset = init_offset + offset
+        for new_offset in range(init_offset, 1 + size - clues_sum - clues_borders):
             last_zero_index = new_offset + current_clue
 
-            zeroes_range = range(init_offset, new_offset)
-            has_zeroes_valid = all(  # TODO: use any
-                [next_possible_shifts[index][0] in (ShiftType.Available, ShiftType.Banned)
-                 for index in zeroes_range])  # TODO: use slice
-
-            ones_range = range(new_offset, last_zero_index)
-            has_ones_valid = all(
-                [next_possible_shifts[index][0] in (ShiftType.Available, ShiftType.Mandatory)
-                 for index in ones_range])
-
-            has_last_zero_valid = next_possible_shifts[last_zero_index][0] in (ShiftType.Available, ShiftType.Banned) \
+            has_last_zero_valid = next_possible_shifts[last_zero_index] != ShiftType.Mandatory \
                 if last_zero_index < len(next_possible_shifts) else True
 
-            if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
+            def has_zeroes_valid():
+                zeroes_range = slice(init_offset, new_offset)
+                return all([shift != ShiftType.Mandatory for shift in next_possible_shifts[zeroes_range]])
+
+            def has_ones_valid():
+                ones_range = slice(new_offset, last_zero_index)
+                return all([shift != ShiftType.Banned for shift in next_possible_shifts[ones_range]])
+
+            if has_last_zero_valid and has_zeroes_valid() and has_ones_valid():
                 for perm in get_permutations_rec(permutation, clues[1:], 1 + new_offset + current_clue, size):
                     yield perm
 
@@ -162,6 +144,7 @@ def get_permutations(next_possible_shifts, clues, size):
 
         for i in range(last_zero_index - current_clue, len(permutation)):
             permutation[i] = 0
+
 
     return get_permutations_rec([0 for _ in range(size)], clues, 0, size)
 
