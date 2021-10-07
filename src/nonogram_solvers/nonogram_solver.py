@@ -152,7 +152,7 @@ def get_permutations(next_possible_shifts, clues, size):
             if len(permutation) > last_zero_index:
                 permutation[last_zero_index] = 1
 
-        for i in range(last_zero_index - current_clue, last_zero_index):
+        for i in range(last_zero_index - current_clue, len(permutation)):
             permutation[i] = 0
 
 
@@ -160,10 +160,12 @@ def get_permutations(next_possible_shifts, clues, size):
 
 
 def test_get_permutations_15():
-    permutations = list(get_permutations([Shift(Shift.Type.Available)] * 15, [1, 2, 3, 1], 15))
+    permutations = list(map(
+        lambda p: tuple(p),
+        get_permutations([Shift(Shift.Type.Available)] * 15, [1, 2, 3, 1], 15)))
     print(permutations)
-    assert tuple(permutations[0]) == (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0)
-    assert tuple(permutations[-1]) == (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
+    assert permutations[0] == (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0)
+    assert permutations[-1] == (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
 
 
 def test_solve_15():
