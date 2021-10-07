@@ -5,6 +5,8 @@ from enum import IntEnum
 
 # TODO: benchmark and try call rust
 # https://stackoverflow.com/questions/41770791/arrays-in-python-are-assigned-by-value-or-by-reference
+import numpy as np
+
 
 class Bit(IntEnum):
     FILLED = 1
@@ -123,31 +125,43 @@ def get_permutations(next_possible_shifts, clues, size):
         for offset in range(1 + size - init_offset - clues_sum - clues_borders):
             new_offset = init_offset + offset
 
-            zeroes_range = range(init_offset, new_offset)
+            zeroes_slice = slice(init_offset, new_offset)
             has_zeroes_valid = all(
-                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Banned)  # TODO: use "is"
-                 for index in zeroes_range])  # TODO: add range
+                [next_possible_shift.type in (Shift.Type.Available, Shift.Type.Banned)
+                 for next_possible_shift in next_possible_shifts[zeroes_slice]])
+            # has_zeroes_valid = all(map(
+            #     lambda shift: shift.type in (Shift.Type.Available, Shift.Type.Banned),
+            #     next_possible_shifts[zeroes_slice]))
 
-            ones_range = range(new_offset, new_offset + current_clue)
+            ones_slice = slice(new_offset, new_offset + current_clue)
             has_ones_valid = all(
-                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Mandatory)
-                 for index in ones_range])
+                [next_possible_shift.type in (Shift.Type.Available, Shift.Type.Mandatory)
+                 for next_possible_shift in next_possible_shifts[ones_slice]])
+            # has_ones_valid = all(map(
+            #     lambda shift: shift.type in (Shift.Type.Available, Shift.Type.Mandatory),
+            #     next_possible_shifts[ones_slice]))
 
-            # TODO: use slice
+            # TODO: check index with exception
             last_zero_index = new_offset + current_clue
-            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (
-            Shift.Type.Available, Shift.Type.Banned) \
+            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (Shift.Type.Available, Shift.Type.Banned) \
                 if current_clue + new_offset < len(next_possible_shifts) else True
 
             if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
-                new_permutation = list(permutation)  # TODO: use list comprehension
-                for i in ones_range:
-                    new_permutation[i] = 1
+                # new_permutation = list(permutation)  # TODO: use list comprehension
+                # for i in range(new_offset, new_offset + current_clue): # TODO: move just ones
+                #     new_permutation[i] = 1
+                #
+                new_permutation = permutation.copy()
+                new_permutation[ones_slice].fill(1)
+
+                # new_permutation = [1 if i in ones_slice else bit for i, bit in enumerate(permutation)]
 
                 for perm in get_permutations_rec(new_permutation, clues[1:], 1 + new_offset + current_clue, size):
                     yield perm
 
-    return get_permutations_rec([0 for _ in range(size)], clues, 0, size)
+            # TODO: remove ones here
+
+    return get_permutations_rec(np.zeros(size, dtype=int), clues, 0, size)
 
 
 def test_get_permutations_15():
