@@ -1,7 +1,7 @@
 # https://www.codewars.com/kata/5a5072a6145c46568800004d/train/python
 import itertools
 import time
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 
 # TODO: benchmark and try call rust
@@ -12,35 +12,43 @@ class Bit(IntEnum):
     EMPTY = 0
 
 
-class FlatClues:
+class FlatClues:  # leave as two arrays
     def __init__(self, stack: [int]):
         self.stack = stack
         self.index = 0
 
 
-class Shift:
-    def __init__(self, type, size=0):
-        self.type = type
-        self.size = size
+class ShiftType(Enum):
+    Available = 0,
+    Mandatory = 1,
+    Banned = 2,
 
-    class Type(IntEnum):
-        Available = 0,
-        Mandatory = 1,
-        Banned = 2,
+
+# Shift = NewType("Shift", Shift)
+
+# class Shift:
+#     def __init__(self, type, size=0):
+#         self.type = type
+#         self.size = size
+#
+#     class Type(IntEnum):
+#         Available = 0,
+#         Mandatory = 1,
+#         Banned = 2,
 
 
 def get_next_possible_bit_shifts(processed_top_clues):
     def get_next_bit_shifts(clues: FlatClues):
         next_index = clues.index
         if len(clues.stack) <= next_index or clues.stack[clues.index] == Bit.EMPTY:
-            return Shift(Shift.Type.Banned)
+            return ShiftType.Banned, 0
 
         rest_len = len(clues.stack) - clues.index - 1
         current_index = clues.index - 1
         if 0 > current_index or clues.stack[current_index] == Bit.EMPTY:
-            return Shift(Shift.Type.Available, rest_len)
+            return ShiftType.Available, rest_len
 
-        return Shift(Shift.Type.Mandatory, rest_len)
+        return ShiftType.Mandatory, rest_len
 
     return [get_next_bit_shifts(processed_top_clue)
             for processed_top_clue in processed_top_clues]
@@ -88,8 +96,8 @@ def solve(clues):
         next_possible_bits = get_next_possible_bit_shifts(top_clues)
 
         def has_not_enough_len(shift):
-            has_valid_type = shift.type == Shift.Type.Available or shift.type == Shift.Type.Mandatory
-            return has_valid_type and shift.size > clues_len - current_clues_index
+            _, size = shift
+            return size > clues_len - current_clues_index
 
         if any(map(has_not_enough_len, next_possible_bits)):
             return False
@@ -133,16 +141,16 @@ def get_permutations(next_possible_shifts, clues, size):
 
             zeroes_range = range(init_offset, new_offset)
             has_zeroes_valid = all(  # TODO: use any
-                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Banned)
+                [next_possible_shifts[index][0] in (ShiftType.Available, ShiftType.Banned)
                  for index in zeroes_range])  # TODO: use slice
 
             ones_range = range(new_offset, last_zero_index)
             has_ones_valid = all(
-                [next_possible_shifts[index].type in (Shift.Type.Available, Shift.Type.Mandatory)
+                [next_possible_shifts[index][0] in (ShiftType.Available, ShiftType.Mandatory)
                  for index in ones_range])
 
-            has_last_zero_valid = next_possible_shifts[last_zero_index].type in (Shift.Type.Available, Shift.Type.Banned) \
-                    if last_zero_index < len(next_possible_shifts) else True
+            has_last_zero_valid = next_possible_shifts[last_zero_index][0] in (ShiftType.Available, ShiftType.Banned) \
+                if last_zero_index < len(next_possible_shifts) else True
 
             if has_zeroes_valid and has_ones_valid and has_last_zero_valid:
                 for perm in get_permutations_rec(permutation, clues[1:], 1 + new_offset + current_clue, size):
@@ -155,14 +163,13 @@ def get_permutations(next_possible_shifts, clues, size):
         for i in range(last_zero_index - current_clue, len(permutation)):
             permutation[i] = 0
 
-
     return get_permutations_rec([0 for _ in range(size)], clues, 0, size)
 
 
 def test_get_permutations_15():
     permutations = list(map(
         lambda p: tuple(p),
-        get_permutations([Shift(Shift.Type.Available)] * 15, [1, 2, 3, 1], 15)))
+        get_permutations([(ShiftType.Available, 0)] * 15, [1, 2, 3, 1], 15)))
     print(permutations)
     assert permutations[0] == (1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0)
     assert permutations[-1] == (0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1)
