@@ -12,12 +12,13 @@ fn path_finder(maze: &str) -> bool {
 
         (i <= end_i && j <= end_j)
             && (maze[i][j] == '.')
-            && ((i == end_i && j == end_j)
-                || (maze[i][j] = 'C') == ()
-                    && (path_finder_rec(maze, i + 1, j)
-                        || path_finder_rec(maze, i, j + 1)
-                        || path_finder_rec(maze, i.saturating_sub(1), j)
-                        || path_finder_rec(maze, i, j.saturating_sub(1))))
+            && ((i == end_i && j == end_j) || {
+                maze[i][j] = 'C';
+                path_finder_rec(maze, i + 1, j)
+                    || path_finder_rec(maze, i, j + 1)
+                    || path_finder_rec(maze, i.saturating_sub(1), j)
+                    || path_finder_rec(maze, i, j.saturating_sub(1))
+            })
     }
 }
 // recursive functions

@@ -20,14 +20,14 @@ impl Compiler {
         loop {
             match iter.peek() {
                 Some(&c) => match c {
-                    'a'...'z'|'A'...'Z' => {
+                    'a'..='z'|'A'..='Z' => {
                         let mut tmp = String::new();
                         while iter.peek().is_some() && iter.peek().unwrap().is_alphabetic() {
                             tmp.push(iter.next().unwrap());
                         }
                         tokens.push(tmp);
                     },
-                    '0'...'9' => {
+                    '0'..='9' => {
                         let mut tmp = String::new();
                         while iter.peek().is_some() && iter.peek().unwrap().is_numeric() {
                             tmp.push(iter.next().unwrap());
