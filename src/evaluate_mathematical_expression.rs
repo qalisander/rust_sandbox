@@ -23,6 +23,11 @@ enum TType {
     Num(f64),
 }
 
+enum Expr {
+    Binary,
+    Unary,
+}
+
 fn calc(input_expr: &str) -> f64 {
     let scan1 = scan(input_expr);
     create_expr(scan1);
