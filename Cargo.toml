@@ -22,6 +22,10 @@ criterion = "0.3.5"
 criterion-macro = "0.3"
 #bencher = "0.1.4"
 
+#NOTE: fore valgrind profiler
+#[profile.release]
+#debug = true
+
 [[bench]]
 name = "testbench_1"
 harness = false
