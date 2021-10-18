@@ -70,7 +70,7 @@ impl Debug for DiagonalChessboard {
                 ". ".repeat(self.size - j - 1),
             )?;
         }
-        writeln!(f)
+        writeln!(f, "Q - queen in place\nq - coincident queen\n")
     }
 }
 
@@ -91,7 +91,8 @@ impl Display for DiagonalChessboard {
 }
 
 impl DiagonalChessboard {
-    fn from_mandatory_queen(n: usize, mandatory_queen: Queen) -> DiagonalChessboard { // TODO: use generics into<Queen>
+    fn from_mandatory_queen<T: Into<Queen>>(n: usize, mandatory_queen: T) -> DiagonalChessboard {
+        let mandatory_queen = mandatory_queen.into();
         let diag_size = 2 * n - 1;
         let mut initial_chessboard = DiagonalChessboard {
             diag0_to1: vec![Option::None; diag_size],
@@ -105,16 +106,21 @@ impl DiagonalChessboard {
         let mut vacant_queens_0 = vec![true; n];
         let mut vacant_queens_1 = vec![false; n];
 
+        // TODO: extract function fill king pattern
         let mut queen = mandatory_queen;
         loop {
-            if initial_chessboard.add_queen((n, queen)).is_ok() {
+            if initial_chessboard.try_add_queen((n, queen)).is_ok() {
                 vacant_queens_0[queen.0] = false;
+
                 queen.0 = if queen.0 >= 2 {
                     queen.0 - 2
-                } else if (n - mandatory_queen.0) % 2 == 0 {
-                    n.saturating_sub(1)
                 } else {
-                    n.saturating_sub(2)
+                    let max_0 = vacant_queens_0.iter().rposition(|&is_vacant| !is_vacant).unwrap_or(n - 1);
+                    if (n - max_0) % 2 == 0 {
+                        n - 1
+                    } else {
+                        n.saturating_sub(2)
+                    }
                 };
             } else {
                 vacant_queens_1[queen.1] = true;
@@ -129,13 +135,13 @@ impl DiagonalChessboard {
         filter_vacant(vacant_queens_0)
             .zip(filter_vacant(vacant_queens_1))
             .for_each(|(diag_0, diag_1)| {
-                initial_chessboard.add_coincident_queen((n, Queen(diag_0, diag_1)));
+                initial_chessboard.add_queen((n, Queen(diag_0, diag_1)));
             });
 
         fn filter_vacant(vacant_queens: Vec<bool>) -> impl Iterator<Item = usize> {
             vacant_queens
                 .into_iter()
-                .enumerate()
+                .enumerate()//TODO: use iter.positions()
                 .filter_map(|(index, is_vacant)| if is_vacant { Some(index) } else { None })
         }
 
@@ -143,7 +149,13 @@ impl DiagonalChessboard {
         initial_chessboard
     }
 
-    fn add_queen<T: Into<DiagonalQueen>>(
+    fn add_queen<T: Into<DiagonalQueen>>(&mut self, queen: T){
+        if let Err(diag_queen) = self.try_add_queen(queen) {
+            self.add_coincident_queen(diag_queen);
+        }
+    }
+
+    fn try_add_queen<T: Into<DiagonalQueen>>(
         &mut self,
         queen: T,
     ) -> Result<DiagonalQueen, DiagonalQueen> {
@@ -164,10 +176,10 @@ impl DiagonalChessboard {
     fn get_queens_in_rectangular_coordinates(&self) -> impl Iterator<Item = (Queen, bool, bool)> + '_ {
         self.diag0_to1
             .iter()
-            .enumerate()
+            .enumerate()//TODO: use iter.positions()
             .filter_map(
                 |(index, opt)| {
-                    // TODO: read about option map https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
+                    // TODO: to explore option map https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
                     opt.as_ref().map(|diag_1| (DiagonalQueen(index, *diag_1), false))
                 }
             )
@@ -196,7 +208,7 @@ impl Display for Chessboard {
 }
 
 pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<String> {
-    let chessboard = DiagonalChessboard::from_mandatory_queen(n, mandatory_queen.into());
+    let chessboard = DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
     todo!("Create queens");
 }
 
@@ -220,7 +232,7 @@ mod tests {
     fn initial_chessboard_test() {
         let basic_tests = vec![(8, (3, 0)), (4, (2, 0)), (1, (0, 0))];
         for (n, mandatory_queen) in basic_tests {
-            DiagonalChessboard::from_mandatory_queen(n, mandatory_queen.into());
+            DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
         }
     }
 
