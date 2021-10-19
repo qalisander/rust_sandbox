@@ -47,9 +47,9 @@ impl From<(usize, Queen)> for DiagonalQueen {
 //     |   / \   |
 //     | 1/   \0 |
 //  (0)V-V-----V-|
-struct DiagonalChessboard {
-    diag0_to1: Vec<Option<usize>>,
-    diag1_to0: Vec<Option<usize>>,
+struct DiagonalChessboard { // TODO: vec option? maybe use hashset?
+    diag0_to1: Vec<Option<usize>>,// TODO: diag to horizontal queen
+    diag1_to0: Vec<Option<usize>>,// TODO: horizontal queen to diag
     coincident_queens: VecDeque<DiagonalQueen>,
     mandatory_queen: DiagonalQueen,
     diag_size: usize,
@@ -103,10 +103,10 @@ impl DiagonalChessboard {
             size: n,
         };
 
-        let mut vacant_queens_0 = vec![true; n];
+        let mut vacant_queens_0 = vec![true; n]; // TODO: use sets or bitsets
         let mut vacant_queens_1 = vec![false; n];
 
-        // TODO: extract function fill king pattern
+        // TODO: extract function fill knight pattern
         let mut queen = mandatory_queen;
         loop {
             if initial_chessboard.try_add_queen((n, queen)).is_ok() {
@@ -134,15 +134,14 @@ impl DiagonalChessboard {
 
         filter_vacant(vacant_queens_0)
             .zip(filter_vacant(vacant_queens_1))
-            .for_each(|(diag_0, diag_1)| {
-                initial_chessboard.add_queen((n, Queen(diag_0, diag_1)));
+            .for_each(|(i, j)| {
+                initial_chessboard.add_queen((n, Queen(i, j)));
             });
 
         fn filter_vacant(vacant_queens: Vec<bool>) -> impl Iterator<Item = usize> {
             vacant_queens
                 .into_iter()
-                .enumerate()//TODO: use iter.positions()
-                .filter_map(|(index, is_vacant)| if is_vacant { Some(index) } else { None })
+                .positions(|is_vacant| is_vacant)
         }
 
         dbg!(&initial_chessboard);
@@ -155,7 +154,7 @@ impl DiagonalChessboard {
         }
     }
 
-    fn try_add_queen<T: Into<DiagonalQueen>>(
+    fn try_add_queen<T: Into<DiagonalQueen>>( // TODO: return pushed queen
         &mut self,
         queen: T,
     ) -> Result<DiagonalQueen, DiagonalQueen> {
@@ -176,7 +175,7 @@ impl DiagonalChessboard {
     fn get_queens_in_rectangular_coordinates(&self) -> impl Iterator<Item = (Queen, bool, bool)> + '_ {
         self.diag0_to1
             .iter()
-            .enumerate()//TODO: use iter.positions()
+            .enumerate()
             .filter_map(
                 |(index, opt)| {
                     // TODO: to explore option map https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
@@ -208,14 +207,15 @@ impl Display for Chessboard {
 }
 
 pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<String> {
-    let chessboard = DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
-    todo!("Create queens");
-}
+    let mut chessboard = DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
+    while let Some(queen) = chessboard.coincident_queens.pop_front() {
+        if let Some(queen_1) = chessboard.diag0_to1[queen.0] {
 
-//....
-//.Q..
-//....
-//Q...
+        }
+    }
+    // TODO: return None by timer and size lower than 8
+    Some(format!("{0}", chessboard))
+}
 
 #[cfg(test)]
 mod tests {
