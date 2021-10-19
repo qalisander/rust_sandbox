@@ -5,8 +5,6 @@ use std::collections::{HashSet, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
 use std::iter;
 
-//type Queen = (usize, usize); // TODO: made struct, and implement From trait
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Queen{
     rect: (usize, usize),
@@ -131,6 +129,7 @@ impl DiagonalChessboard {
             n,
         };
 
+        // TODO: there is no point in vacant_queens anymore, use axis0_to_..
         let mut vacant_queens_0 = vec![true; n]; // TODO: use sets or bitsets
         let mut vacant_queens_1 = vec![false; n];
 
