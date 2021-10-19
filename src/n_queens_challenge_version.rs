@@ -6,6 +6,28 @@ use std::fmt::{Debug, Display, Formatter};
 use std::iter;
 
 //type Queen = (usize, usize); // TODO: made struct, and implement From trait
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Queen{
+    rect: (usize, usize),
+    diag: (usize, usize),
+}
+
+impl Queen {
+    fn from_rect(n: usize, rect: (usize, usize)) -> Self{
+        let diag = (rect.0 + rect.1, n - 1 + rect.0 - rect.1);
+        Queen{ rect, diag }
+    }
+
+    fn from_diag(n: usize, diag: (usize, usize)) -> Self{
+        let rect = (
+            (diag.0 + diag.1 + 1 - n) / 2,
+            (n - 1 + diag.0 - diag.1) / 2,
+        );
+        Queen{ rect, diag }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct RectQueen(usize, usize); // TODO: rename to rect_queens
 
@@ -27,7 +49,7 @@ impl From<(usize, usize)> for RectQueen {
 struct Chessboard(Vec<RectQueen>, usize); // TODO: prlly turn into slice with lifetime specifier
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-struct DiagQueen(usize, usize);
+struct DiagQueen(usize, usize);// TODO: beter has one queen with all kinds of coordinates, and methods from_rect and from_diag
 
 impl From<(usize, RectQueen)> for DiagQueen {
     fn from((size, queen): (usize, RectQueen)) -> Self {
@@ -100,13 +122,13 @@ impl DiagonalChessboard {
         let mut initial_chessboard = DiagonalChessboard {
             diag0_to_rect: vec![Option::None; diag_size],
             diag1_to_rect: vec![Option::None; diag_size],
-            axis0_to_diag: vec![],
-            axis1_to_diag: vec![],
+            axis0_to_diag: vec![Option::None; n],
+            axis1_to_diag: vec![Option::None; n],
             coincident_queens: VecDeque::new(),
             mandatory_queen_diag: (n, mandatory_queen).into(),
             mandatory_queen_rect: mandatory_queen,
             diag_size,
-            n: n,
+            n,
         };
 
         let mut vacant_queens_0 = vec![true; n]; // TODO: use sets or bitsets
@@ -115,7 +137,9 @@ impl DiagonalChessboard {
         // TODO: extract function fill knight pattern
         let mut queen = mandatory_queen;
         loop {
-            if initial_chessboard.try_add_queen((n, queen)).is_ok() {
+            let diag_queen = (n, queen).into();
+            if initial_chessboard.is_diag_coincident(&diag_queen) {
+                initial_chessboard.push_queen(diag_queen);
                 vacant_queens_0[queen.0] = false;
 
                 queen.0 = if queen.0 >= 2 {
@@ -141,7 +165,7 @@ impl DiagonalChessboard {
         filter_vacant(vacant_queens_0)
             .zip(filter_vacant(vacant_queens_1))
             .for_each(|(i, j)| {
-                initial_chessboard.add_queen((n, RectQueen(i, j)));
+                initial_chessboard.push_queen_or_coincident((n, RectQueen(i, j)));
             });
 
         fn filter_vacant(vacant_queens: Vec<bool>) -> impl Iterator<Item = usize> {
