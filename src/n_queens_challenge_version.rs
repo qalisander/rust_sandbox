@@ -13,6 +13,8 @@ struct Queen{
     diag: (usize, usize),
 }
 
+//NOTE: before solving a problem think about which data will be used aka context pattern!
+
 impl Queen {
     fn from_rect(n: usize, rect: (usize, usize)) -> Self{
         let diag = (rect.0 + rect.1, n - 1 + rect.0 - rect.1);
@@ -26,6 +28,10 @@ impl Queen {
         );
         Queen{ rect, diag }
     }
+    // TODO: create try move fund
+//    fn try_move_rect(&mut self, n: usize, delta: (usize, usize)) -> bool{
+//
+//    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -59,9 +65,6 @@ impl From<(usize, RectQueen)> for DiagQueen {
 }
 
 // TODO: maybe use randomized algo
-// TODO: implement display and debug for DiagonalChessboard
-// TODO: display of initial DiagonalChessboard and in any moment of time
-// TODO: main algo
 
 //     |--------->(1)
 //     |         |
@@ -70,13 +73,12 @@ impl From<(usize, RectQueen)> for DiagQueen {
 //     | 1/   \0 |
 //  (0)V-V-----V-|
 struct DiagonalChessboard { // TODO: vec option? maybe use hashset?
-    diag0_to_rect: Vec<Option<RectQueen>>,// TODO: diag to horizontal queen
-    diag1_to_rect: Vec<Option<RectQueen>>,// TODO: horizontal queen to diag
-    axis0_to_diag: Vec<Option<DiagQueen>>,
-    axis1_to_diag: Vec<Option<DiagQueen>>,
-    coincident_queens: VecDeque<DiagQueen>,
-    mandatory_queen_diag: DiagQueen,
-    mandatory_queen_rect: RectQueen,
+    diag0_to_rect: Vec<Option<Queen>>,// TODO: diag to horizontal queen
+    diag1_to_rect: Vec<Option<Queen>>,// TODO: horizontal queen to diag
+    axis0_to_diag: Vec<Option<Queen>>,
+    axis1_to_diag: Vec<Option<Queen>>,
+    coincident_queens: VecDeque<Queen>,
+    mandatory_queen: Queen,
     diag_size: usize,
     n: usize,
 }
@@ -85,14 +87,14 @@ impl Debug for DiagonalChessboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let queens = self.get_queens_in_rectangular_coordinates();
         writeln!(f, "\nQueens left: {0}", self.coincident_queens.len())?;
-        for (RectQueen(i, j), is_coincident, is_mandatory) in queens{
+        for (Queen{rect, diag}, is_coincident, is_mandatory) in queens{
             let queen_letter = if is_coincident {"q"} else {"Q"};
             writeln!(
                 f,
                 "{}{}{}",
-                " .".repeat(j),
+                " .".repeat(rect.1),
                 if is_mandatory {format!("({0})", queen_letter)} else {format!(" {0} ", queen_letter)},
-                ". ".repeat(self.n - j - 1),
+                ". ".repeat(self.n - rect.1 - 1),
             )?;
         }
         writeln!(f, "Q - queen in place\nq - coincident queen\n")
@@ -102,13 +104,13 @@ impl Debug for DiagonalChessboard {
 impl Display for DiagonalChessboard {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let queens = self.get_queens_in_rectangular_coordinates();
-        for (RectQueen(i, j), _, _) in queens{
+        for (Queen{rect, diag}, _, _) in queens{
             writeln!(
                 f,
                 "{}{}{}",
-                ".".repeat(j),
+                ".".repeat(rect.1),
                 "Q",
-                ".".repeat(self.n - j - 1)
+                ".".repeat(self.n - rect.1 - 1)
             )?;
         }
         writeln!(f)
@@ -116,8 +118,7 @@ impl Display for DiagonalChessboard {
 }
 
 impl DiagonalChessboard {
-    fn from_mandatory_queen<T: Into<RectQueen>>(n: usize, mandatory_queen: T) -> DiagonalChessboard {
-        let mandatory_queen = mandatory_queen.into();
+    fn from_mandatory_queen(n: usize, mandatory_queen: Queen) -> DiagonalChessboard {
         let diag_size = 2 * n - 1;
         let mut initial_chessboard = DiagonalChessboard {
             diag0_to_rect: vec![Option::None; diag_size],
@@ -125,8 +126,7 @@ impl DiagonalChessboard {
             axis0_to_diag: vec![Option::None; n],
             axis1_to_diag: vec![Option::None; n],
             coincident_queens: VecDeque::new(),
-            mandatory_queen_diag: (n, mandatory_queen).into(),
-            mandatory_queen_rect: mandatory_queen,
+            mandatory_queen,
             diag_size,
             n,
         };
@@ -135,15 +135,15 @@ impl DiagonalChessboard {
         let mut vacant_queens_1 = vec![false; n];
 
         // TODO: extract function fill knight pattern
-        let mut queen = mandatory_queen;
+        let mut queen_rect = mandatory_queen.rect;
         loop {
-            let diag_queen = (n, queen).into();
-            if initial_chessboard.is_diag_coincident(&diag_queen) {
-                initial_chessboard.push_queen(diag_queen);
-                vacant_queens_0[queen.0] = false;
+            let queen = Queen::from_rect(n, queen_rect);
+            if !initial_chessboard.is_diag_coincident(&queen) {
+                initial_chessboard.push_queen(queen);
+                vacant_queens_0[queen_rect.0] = false;
 
-                queen.0 = if queen.0 >= 2 {
-                    queen.0 - 2
+                queen_rect.0 = if queen_rect.0 >= 2 {
+                    queen_rect.0 - 2
                 } else {
                     let max_0 = vacant_queens_0.iter().rposition(|&is_vacant| !is_vacant).unwrap_or(n - 1);
                     if (n - max_0) % 2 == 0 {
@@ -153,11 +153,11 @@ impl DiagonalChessboard {
                     }
                 };
             } else {
-                vacant_queens_1[queen.1] = true;
+                vacant_queens_1[queen_rect.1] = true;
             }
-            queen.1 = (queen.1 + 1) % n;
+            queen_rect.1 = (queen_rect.1 + 1) % n;
 
-            if queen.1 == mandatory_queen.1 {
+            if queen_rect.1 == mandatory_queen.rect.1 {
                 break;
             }
         }
@@ -165,7 +165,7 @@ impl DiagonalChessboard {
         filter_vacant(vacant_queens_0)
             .zip(filter_vacant(vacant_queens_1))
             .for_each(|(i, j)| {
-                initial_chessboard.push_queen_or_coincident((n, RectQueen(i, j)));
+                initial_chessboard.push_queen_or_coincident(Queen::from_rect(n, (i, j)));
             });
 
         fn filter_vacant(vacant_queens: Vec<bool>) -> impl Iterator<Item = usize> {
@@ -178,91 +178,56 @@ impl DiagonalChessboard {
         initial_chessboard
     }
 
-    fn push_queen_or_coincident<T: Into<DiagQueen>>(&mut self, queen: T){
-        let queen = queen.into();
+    fn push_queen_or_coincident(&mut self, queen: Queen){
         if self.is_diag_coincident(&queen) {
-            self.push_coincident_queen(queen)
+            self.coincident_queens.push_back(queen)
         } else {
             self.push_queen(queen);
         }
     }
 
     #[allow(clippy::or_fun_call, unused_must_use)]
-    fn push_queen<T: Into<DiagQueen>>(&mut self, queen: T) -> Option<RectQueen>{
-        let diag_queen = queen.into();
-        if self.is_diag_coincident(&diag_queen) {
+    fn push_queen(&mut self, queen: Queen) -> Option<Queen>{
+        if self.is_diag_coincident(&queen) {
             return None;
         }
-        let rect_queen = (self.n, diag_queen).into();
-        self.diag0_to_rect[diag_queen.0].insert(rect_queen);
-        self.diag1_to_rect[diag_queen.1].insert(rect_queen);
+        self.diag0_to_rect[queen.diag.0].insert(queen);
+        self.diag1_to_rect[queen.diag.1].insert(queen);
 
-        let rect_coincidence = self.axis0_to_diag[rect_queen.0].take()
-            .or(self.axis1_to_diag[rect_queen.1].take());
+        let rect_coincidence = self.axis0_to_diag[queen.rect.0].take()
+            .or(self.axis1_to_diag[queen.rect.1].take());
         if let Some(coincident_queen) = rect_coincidence {
-            self.axis0_to_diag[coincident_queen.0].take()
-                .or(self.axis1_to_diag[coincident_queen.1].take())
-                .map(|diag| (self.n, diag).into())
+            self.axis0_to_diag[coincident_queen.rect.0].take()
+                .or(self.axis1_to_diag[coincident_queen.rect.1].take())
         } else {
             None
         }
     }
 
-    fn push_coincident_queen<T: Into<DiagQueen>>(&mut self, queen: T) {
-        self.coincident_queens.push_back(queen.into());
+    fn is_diag_coincident(&self, queen: &Queen) -> bool{
+        self.diag0_to_rect[queen.diag.0].is_some() || self.diag1_to_rect[queen.diag.1].is_some()
     }
 
-    fn is_diag_coincident(&self, queen: &DiagQueen) -> bool{
-        self.diag0_to_rect[queen.0].is_some() || self.diag1_to_rect[queen.1].is_some()
-    }
-
-    fn add_queen<T: Into<DiagQueen>>(&mut self, queen: T){
-        if let Err(diag_queen) = self.try_add_queen(queen) {
-            self.add_coincident_queen(diag_queen);
-        }
-    }
-
-    // TODO: return pushed queen
-    fn try_add_queen<T: Into<DiagQueen>>(
-        &mut self,
-        queen: T,
-    ) -> Result<DiagQueen, DiagQueen> {
-        let queen = queen.into();
-        if self.diag0_to_rect[queen.0].is_some() || self.diag1_to_rect[queen.1].is_some() {
-            Err(queen)
-        } else {
-            let queen_rect = (self.n, queen).into();
-            self.diag0_to_rect[queen.0] = Some(queen_rect);
-            self.diag1_to_rect[queen.1] = Some(queen_rect);
-            // TODO: add queen as rectongular
-            Ok(queen)
-        }
-    }
-
-    fn add_coincident_queen<T: Into<DiagQueen>>(&mut self, queen: T) {
-        self.coincident_queens.push_back(queen.into());
-    }
-
-    fn get_queens_in_rectangular_coordinates(&self) -> impl Iterator<Item = (RectQueen, bool, bool)> + '_ {
+    fn get_queens_in_rectangular_coordinates(&self) -> impl Iterator<Item = (Queen, bool, bool)> + '_ {
         self.diag0_to_rect
             .iter()
             .enumerate()
             .filter_map(
                 |(index, opt)| {
                     // TODO: to explore option map https://rust-lang.github.io/rust-clippy/master/index.html#manual_map
-                    opt.as_ref().map(|rect| (*rect, false))
+                    opt.as_ref().map(|rect| (rect, false))
                 }
             )
             .chain(
                 self.coincident_queens
                     .iter()
-                    .map(|diag_queen| ((self.n, *diag_queen).into(), true)),
+                    .map(|queen| (queen, true))
             )
-            .map(|(diag_queen, is_coincident)| {
-                let is_mandatory = diag_queen == self.mandatory_queen_rect;
-                (diag_queen, is_coincident, is_mandatory)
+            .map(|(queen, is_coincident)| {
+                let is_mandatory = self.mandatory_queen == *queen;
+                (*queen, is_coincident, is_mandatory)
             })
-            .sorted_by_key(|(RectQueen(i, j), _, _)| *i)
+            .sorted_by_key(|(Queen{rect, diag}, _, _)| rect.0)
     }
 }
 
@@ -278,9 +243,9 @@ impl Display for Chessboard {
 }
 
 pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<String> {
-    let mut chessboard = DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
+    let mut chessboard = DiagonalChessboard::from_mandatory_queen(n, Queen::from_rect(n, mandatory_queen));
     while let Some(queen) = chessboard.coincident_queens.pop_front() {
-        if let Some(queen_1) = chessboard.diag0_to_rect[queen.0] {
+        if let Some(queen_1) = chessboard.diag0_to_rect[queen.diag.0] {
 
         }
     }
@@ -291,7 +256,7 @@ pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<Strin
 #[cfg(test)]
 mod tests {
     use super::solve_n_queens;
-    use crate::n_queens_challenge_version::{Chessboard, DiagonalChessboard, RectQueen};
+    use crate::n_queens_challenge_version::{Chessboard, DiagonalChessboard, Queen, RectQueen};
 
     #[test]
     fn format_test() {
@@ -303,7 +268,7 @@ mod tests {
     fn initial_chessboard_test() {
         let basic_tests = vec![(8, (3, 0)), (4, (2, 0)), (1, (0, 0))];
         for (n, mandatory_queen) in basic_tests {
-            DiagonalChessboard::from_mandatory_queen(n, mandatory_queen);
+            DiagonalChessboard::from_mandatory_queen(n, Queen::from_rect(n, mandatory_queen));
         }
     }
 
