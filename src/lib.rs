@@ -2,6 +2,8 @@
 #![feature(slice_pattern)]
 #![feature(format_args_capture)]
 #![feature(type_alias_impl_trait)]
+#![feature(step_trait)]
+
 pub mod common_denominators;
 pub mod common_denominators_2;
 mod decimal_to_factorial_and_back;

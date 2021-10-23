@@ -1,8 +1,54 @@
 // https://www.codewars.com/kata/52ffcfa4aff455b3c2000750/train/rust
 
+// NOTE: here we have two types of statements: Function, and
+
+#[derive(Clone, Debug)]
+struct Token{
+    index: usize,
+    len: usize,
+    t_type: TType,
+}
+
+#[derive(Clone, Debug)]
+enum TType{
+    Op(OpType),
+    LeftParen,
+    RightParen,
+    Num(f32),
+    Fn,
+    Identifier(String), // TODO: maybe use &str
+}
+
+#[derive(Clone, Debug)]
+enum OpType {
+    Mult(char),
+    Add(char),
+    Assignment,
+    Fn,
+}
+
+#[derive(Clone, Debug)]
+enum Expr{
+    Binary(Box<Expr>, OpType, Box<Expr>),
+    Unary(OpType, Box<Expr>),
+    Grouping,
+    Num(f32),
+    Fn {
+        callee: Box<Expr>, // TODO: maybe put as separate type
+        args: Box<[Expr]>,
+    }
+}
+
+enum Stmt{
+    FnDeclaration,
+    Assignment,
+    Output,
+}
+
 struct Interpreter {}
 
 impl Interpreter {
+
     fn new() -> Interpreter {
         unimplemented!()
     }

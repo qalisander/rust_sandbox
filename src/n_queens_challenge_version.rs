@@ -142,7 +142,7 @@ impl DiagonalChessboard {
                 .positions(|opt| opt.is_none())
         }
 
-//        dbg!(&initial_chessboard);
+        dbg!(&initial_chessboard);
         initial_chessboard
     }
 
@@ -236,16 +236,26 @@ pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<Strin
         });
 
         if !is_replaced {
+            if chessboard.coincident_queens.is_empty() {
+                let first_onboard = chessboard
+                    .get_all_queens_sorted()
+                    .find(|q| *q != chessboard.mandatory_queen && *q != queen)
+                    .unwrap();
+
+                chessboard.remove_queen(first_onboard);
+                chessboard.coincident_queens.push_back(first_onboard);
+            }
             chessboard.push_queen_or_coincident(queen);
         }
 
         // NOTE: boards that cannot be solved
         if start.elapsed().as_millis() >= 10 && n <= 10 {
+            dbg!(&chessboard);
             return None;
         }
     }
 
-//    dbg!(&chessboard);
+    dbg!(&chessboard);
     Some(format!("{0}", chessboard))
 }
 
@@ -272,7 +282,7 @@ mod tests {
 
     #[test]
     fn basic_tests() {
-        let basic_tests = vec![(8, (3, 0)), (4, (2, 0)), (1, (0, 0)), (8, (0, 5))];
+        let basic_tests = vec![(8, (3, 0)), (4, (2, 0)), (1, (0, 0)), (8, (0, 5)), (9, (7, 2))];
         for (n, fixed) in basic_tests.into_iter() {
             test_solution(n, fixed);
         }
