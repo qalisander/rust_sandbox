@@ -11,6 +11,7 @@ struct Token {
     t_type: TType,
 }
 
+// TODO: add end of string token
 #[derive(Clone, Debug, PartialEq)]
 enum TType {
     Op(char),
@@ -50,33 +51,54 @@ struct FnBody {
 }
 
 struct Interpreter {
-    vars: HashMap<String, f32>, // TODO: stage2, store functions and FnBody in single table
+    // TODO: compare hashset with vec
+    // TODO: stage2, store functions and FnBody in single table
+    var_stack: Vec<(String, f32)>,
     funcs: HashMap<String, FnBody>,
 }
 
 impl Interpreter {
     fn new() -> Interpreter {
         Self{
-            vars: HashMap::new(),
+            var_stack: vec![],
             funcs: HashMap::new(),
         }
     }
 
+    // TODO: use cow<'static, &str>
     fn input(&mut self, input: &str) -> Result<Option<f32>, String> {
         let tokens = scan(input);
         let statement = self.parse(tokens);
         self.interpret(statement)
     }
 
+    // statement      → "fn" identifier "=>" expression | identifier "=" expression | expression ;
+    // expression     → term ;
+    // term           → factor ( ( "-" | "+" ) factor )* ;
+    // factor         → unary ( ( "/" | "*" ) unary )* ;
+    // unary          → "-" unary | primary ;
+    // primary        → "(" term ")" | identifier | number;
     fn parse(&mut self, tokens: impl Iterator<Item = Token>) -> Stmt {
         unimplemented!()
     }
 
-    fn interpret(&mut self, stmt: Stmt) -> Result<Option<f32>, String>{
-        unimplemented!()
-    }
-
     //TODO: implement separate variables resolver
+
+    fn interpret(&mut self, stmt: Stmt) -> Result<Option<f32>, String>{
+        match stmt {
+            Stmt::FnDeclaration { identifier, body } => {
+                self.funcs.insert(identifier, body);
+                //TODO: respond with error when function has not valid args
+                Ok(None)
+            },
+            Stmt::Assignment { identifier, value: val } => {
+                let val = self.eval(&val)?;
+                self.var_stack.push((identifier, val));
+                Ok(Some(val))
+            },
+            Stmt::Expr(expr) => self.eval(&expr).map(Some),
+        }
+    }
 
     fn eval(&mut self, expr: &Expr) -> Result<f32, String> {
         let res = match expr {
@@ -91,32 +113,35 @@ impl Interpreter {
             Expr::Unary(ch, expr) => -self.eval(expr)?,
             Expr::Grouping(expr) => self.eval(expr)?,
             Expr::Num(num) => *num,
-            Expr::Var(identifier) => *self.vars.get(identifier)
+            Expr::Var(identifier) => *self.var_stack.iter()
+                .rfind(|(str, _)| str == identifier)
+                .map(|(_, val)| val)
                 .ok_or(format!("ERROR: Invalid variable identifier '{0}'", identifier))?,
             Expr::Fn {args: expr_args, identifier} => {
-                // TODO: how to propogate errors from iterator?
                 let args: Vec<_> = expr_args.iter().map(|arg| self.eval(arg)).try_collect()?;
 
                 let func_body = self.funcs.get(identifier)
                     .ok_or(format!("ERROR: Invalid function identifier '{0}'", identifier))?;
-                let variables: Vec<_> = func_body.params.iter().zip_longest(args).map(|arg| {
+
+                let vars: Vec<_> = func_body.params.iter().zip_longest(args).map(|arg| {
                     match arg {
                         EitherOrBoth::Both(param, arg) => Ok((param.clone(), arg)),
                         _ => Err(format!("ERROR: Invalid function '{0}' params", identifier)),
                     }
                 }).try_collect()?;
-                self.vars.extend(variables.clone());
+                let vars_len = vars.len();
+
+                self.var_stack.extend(vars);
                 let expr = self.eval(&func_body.callee.clone())?;
-                for (param, _) in variables {
-                    self.vars.remove(&param);
-                }
+                self.var_stack.truncate(self.var_stack.len() - vars_len);
                 expr
-            }
+            },
             _ => panic!("Invalid expression! expr:\n{:?}", expr),
         };
         Ok(res)
     }
 }
+
 
 fn scan(input: &str) -> impl Iterator<Item = Token> + '_{
     input.chars().enumerate().peekable().batching(|iter|{
