@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use itertools::{EitherOrBoth, Itertools, PeekingNext};
 use std::iter;
+use std::ops::Deref;
 
 #[derive(Clone, Debug)]
 struct Token {
@@ -87,8 +88,8 @@ impl Interpreter {
     fn interpret(&mut self, stmt: Stmt) -> Result<Option<f32>, String>{
         match stmt {
             Stmt::FnDeclaration { identifier, body } => {
+                self.check_params(&body)?;
                 self.funcs.insert(identifier, body);
-                //TODO: respond with error when function has not valid args
                 Ok(None)
             },
             Stmt::Assignment { identifier, value: val } => {
@@ -97,6 +98,29 @@ impl Interpreter {
                 Ok(Some(val))
             },
             Stmt::Expr(expr) => self.eval(&expr).map(Some),
+        }
+    }
+
+    // NOTE: no recursion implementation looks pretty:)
+    fn check_params(&mut self, fn_body: &FnBody) -> Result<(), String> {
+        let param_not_exist = |identifier: &String| {
+            !(fn_body.params.contains(identifier)
+                || self.var_stack.iter().any(|(var, _)| var == identifier))
+        };
+        let mut stack = vec![fn_body.callee.deref()];
+        loop {
+            match stack.pop() {
+                Some(expr) => match expr{
+                    Expr::Binary(left, _, right) => stack.extend([left.deref(), right]),
+                    Expr::Unary(_, expr) => stack.push(expr),
+                    Expr::Grouping(expr) => stack.push(expr),
+                    Expr::Fn {args, ..} => stack.extend(args.iter()),
+                    Expr::Var(identifier) if param_not_exist(identifier) =>
+                        break Err(format!("ERROR: Invalid identifier '{0}' in function body", {identifier})),
+                    _ => (),
+                },
+                None => break Ok(()),
+            }
         }
     }
 
@@ -118,16 +142,20 @@ impl Interpreter {
                 .map(|(_, val)| val)
                 .ok_or(format!("ERROR: Invalid variable identifier '{0}'", identifier))?,
             Expr::Fn {args: expr_args, identifier} => {
-                let args: Vec<_> = expr_args.iter().map(|arg| self.eval(arg)).try_collect()?;
+                let args: Vec<_> = expr_args.iter()
+                    .map(|arg| self.eval(arg))
+                    .try_collect()?;
 
                 let func_body = self.funcs.get(identifier)
                     .ok_or(format!("ERROR: Invalid function identifier '{0}'", identifier))?;
 
-                let vars: Vec<_> = func_body.params.iter().zip_longest(args).map(|arg| {
-                    match arg {
-                        EitherOrBoth::Both(param, arg) => Ok((param.clone(), arg)),
-                        _ => Err(format!("ERROR: Invalid function '{0}' params", identifier)),
-                    }
+                let vars: Vec<_> = func_body.params.iter()
+                    .zip_longest(args)
+                    .map(|arg| {
+                        match arg {
+                            EitherOrBoth::Both(param, arg) => Ok((param.clone(), arg)),
+                            _ => Err(format!("ERROR: Invalid function '{0}' params", identifier)),
+                        }
                 }).try_collect()?;
                 let vars_len = vars.len();
 
@@ -143,6 +171,7 @@ impl Interpreter {
 }
 
 
+#[rustfmt::skip]
 fn scan(input: &str) -> impl Iterator<Item = Token> + '_{
     input.chars().enumerate().peekable().batching(|iter|{
         iter.peeking_next(|(_, ch)| ch.is_whitespace());
