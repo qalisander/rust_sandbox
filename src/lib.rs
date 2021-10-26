@@ -3,6 +3,8 @@
 #![feature(format_args_capture)]
 #![feature(type_alias_impl_trait)]
 #![feature(step_trait)]
+//#![feature(hash_set_entry)]
+//#![feature(in_band_lifetimes)]
 
 pub mod common_denominators;
 pub mod common_denominators_2;
