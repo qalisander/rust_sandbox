@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use itertools::{EitherOrBoth, Itertools, MultiPeek, PeekingNext};
-use std::iter;
+use std::{io, iter};
 use std::iter::Peekable;
 use std::ops::Deref;
 
@@ -68,7 +68,9 @@ struct Interpreter<'a> {
     funcs: HashMap<&'a str, FnBody<'a>>,
 }
 
-const INVALID_END: &str = "Invalid ending!";
+const INVALID_END: &str = "ERROR: Invalid ending!";
+const INVALID_TOKEN: &str = "ERROR: Invalid token!";
+const INVALID_PAREN: &str = "ERROR: Invalid paren!";
 
 impl<'a> Interpreter<'a> {
 
@@ -82,23 +84,25 @@ impl<'a> Interpreter<'a> {
     // TODO: use cow<'static, &str>
     // TODO: format error string with ERROR: prefix
     fn input(&mut self, input: &'a str) -> Result<Option<f32>, String> {
+        // TODO: NONE for whitespace
         let tokens = scan(input);
         let statement = Self::parse(tokens)?;
         self.interpret(statement)
     }
 
-    // statement      → "fn" identifier "=>" expression | (identifier "=")? expression ;
-    // expression     → term ;
+    // statement      → "fn" fn_identifier "=>" expression | (identifier "=")? expression ;
+    // expression     → term | fn_identifier (expression)*;
     // term           → factor ( ( "-" | "+" ) factor )* ;
     // factor         → unary ( ( "/" | "*" ) unary )* ;
     // unary          → "-" unary | primary ;
-    // primary        → "(" term ")" | identifier | number;
+    // primary        → "(" expression ")" | identifier | number;
     // TODO: extract as separate method (maybe create struct parser and pass there iterator)
+    // TODO: resolve functions here
     fn parse(tokens: impl Iterator<Item = Token<'a>> + 'a) -> Result<Stmt<'a>, String> {
         let mut peekable = tokens.multipeek();
         let expr = stmt(&mut peekable);
         return match peekable.next() {
-            Some(token) => Err(format!("Invalid token! index:{0}", token.index)),
+            Some(token) => Err(format!("{0} index:{1}", INVALID_TOKEN, token.index)),
             None => expr,
         };
 
@@ -119,20 +123,11 @@ impl<'a> Interpreter<'a> {
                                 }
                             }).collect_vec().into_boxed_slice();
 
-//                            let params = tokens
-//                                .peeking_take_while(|token| matches!(token.t_type, TType::Identifier(_)))
-//                                .map(|token| match token.t_type {
-//                                    TType::Identifier(param) => param,
-//                                    _ => unreachable!(),
-//                                })
-//                                .collect_vec()
-//                                .into_boxed_slice();
-
                             let callee = Box::new(term(&mut tokens.peekable())?);
                             let body = FnBody { params, callee };
                             Ok(Stmt::FnDeclaration { identifier, body })
                         }
-                        token => Err(format!("Invalid token! index:{0}", token.index))
+                        token => Err(format!("{0} index:{1}", INVALID_TOKEN, token.index))
                     }
                 },
                 TType::Identifier(var) => {
@@ -194,7 +189,7 @@ impl<'a> Interpreter<'a> {
         }
 
         fn primary<'a>(tokens: &mut Peekable<impl Iterator<Item=Token<'a>>>) -> Result<Expr<'a>, String> {
-            let token = tokens.next().ok_or(INVALID_END.to_string())?;
+            let token = tokens.next().ok_or_else(|| INVALID_END.to_string())?;
             match token.t_type {
                 TType::Num(num) => Ok(Expr::Num(num)),
                 TType::Identifier(var) => Ok(Expr::Var(var)),
@@ -203,12 +198,12 @@ impl<'a> Interpreter<'a> {
                     match tokens.next() {
                         Some(token) => match token.t_type {
                             TType::RightParen => Ok(Expr::Grouping(Box::new(expr))),
-                            _ => Err(format!("Invalid paren! index:{0}", token.index)),
+                            _ => Err(format!("{0} index:{1}", INVALID_PAREN, token.index)),
                         },
-                        None => Err("Invalid paren!".to_string()), // TODO: move to const
+                        None => Err(INVALID_PAREN.to_string()),
                     }
                 }
-                _ => Err(format!("Invalid token! index:{0}", token.index)),
+                _ => Err(format!("{0} index:{1}", INVALID_TOKEN, token.index)),
             }
         }
     }
@@ -262,7 +257,7 @@ impl<'a> Interpreter<'a> {
                 '/' => self.eval(left)? / self.eval(right)?,
                 '*' => self.eval(left)? * self.eval(right)?,
                 '%' => self.eval(left)? % self.eval(right)?,
-                op => panic!("Invalid operation! op:{:?}", op),
+                op => panic!("ERROR: Invalid operation! op:{:?}", op),
             },
             Expr::Unary(ch, expr) => -self.eval(expr)?,
             Expr::Grouping(expr) => self.eval(expr)?,
@@ -294,7 +289,6 @@ impl<'a> Interpreter<'a> {
                 self.var_stack.truncate(self.var_stack.len() - vars_len);
                 expr
             },
-            _ => panic!("Invalid expression! expr:\n{:?}", expr),
         };
         Ok(res)
     }
@@ -308,16 +302,22 @@ fn scan(input: &str) -> impl Iterator<Item=Token> + '_{
         match iter.next() {
             None => None,
             Some((index, ch)) => {
+                let mut last_index_when = |accept: fn(char) -> bool| iter
+                    .peeking_take_while(|(_, ch)| accept(*ch))
+                    .map(|(index, _)| index)
+                    .last()
+                    .unwrap_or(index);
+
                 let token = match ch {
                     '0'..='9' => {
-                        let num_str: String = iter::once(ch)
-                            .chain(iter
-                                .peeking_take_while(|(_, ch)| ch.is_numeric() || *ch == '.')
-                                .map(|(_, ch)| ch))
-                            .collect();
-                        let num = num_str.parse::<f32>()
-                            .unwrap_or_else(|_| panic!("Invalid token! index:{0}", index));
-                        Token { index, len: num_str.len(), t_type: TType::Num(num) }
+                        let last_index = last_index_when(|ch|
+                            matches!(ch, '0'..='9' | '.'));
+
+                        let len = 1 + last_index - index;
+                        let num = input[index..=last_index].parse::<f32>()
+                            .unwrap_or_else(|_| panic!("{0} index:{1}", INVALID_TOKEN, index));
+
+                        Token { index, len, t_type: TType::Num(num) }
                     },
                     '(' => Token { index, len: 1, t_type: TType::LeftParen },
                     ')' => Token { index, len: 1, t_type: TType::RightParen },
@@ -327,17 +327,18 @@ fn scan(input: &str) -> impl Iterator<Item=Token> + '_{
                         Some(_) => Token { index, len: 2, t_type: TType::FnArrow }
                     },
                     'a'..='z' | 'A'..='Z' | '_' => {
-                        let identifier: String = iter::once(ch)
-                            .chain(iter
-                                .peeking_take_while(|(_, ch)|
-                                    ch.is_alphabetic() || ch.is_numeric() || *ch == '_')
-                                .map(|(_, ch)| ch))
-                            .collect();
-                        let len = identifier.len(); //NOTE: bytes
-                        let t_type = if identifier == "fn" { TType::Fn } else { TType::Identifier(&input[index..index + len]) }; //TODO: index of last one
+                        let last_index = last_index_when(|ch|
+                            matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'));
+
+                        let len = 1 + last_index - index;
+                        let t_type =  match &input[index..=last_index] {
+                            "fn" => TType::Fn,
+                            ch => TType::Identifier(ch),
+                        };
+
                         Token {index, len, t_type}
                     },
-                    _ => panic!("Invalid token! index:{0}, char:{1}", index, ch),
+                    _ => panic!("{0} index:{1}, char:{2}",INVALID_TOKEN, index, ch), // TODO: Use errors
                 };
                 Some(token)
             }
@@ -347,21 +348,23 @@ fn scan(input: &str) -> impl Iterator<Item=Token> + '_{
 
 #[test]
 fn scan_test(){
-    let test = "fn avg x y =>  (x + y) / 2";
+    let test = "fn avg x y_1 =>    (x - y_1 + 123423434) / 2.343";
     let tokens = scan(test).map(|token| token.t_type);
     let expected_tokens = [
         TType::Fn,
         TType::Identifier("avg"),
         TType::Identifier("x"),
-        TType::Identifier("y"),
+        TType::Identifier("y_1"),
         TType::FnArrow,
         TType::LeftParen,
         TType::Identifier("x"),
+        TType::Op('-'),
+        TType::Identifier("y_1"),
         TType::Op('+'),
-        TType::Identifier("y"),
+        TType::Num(123423434.0),
         TType::RightParen,
         TType::Op('/'),
-        TType::Num(2.0),
+        TType::Num(2.343),
     ];
 
     itertools::assert_equal(tokens, expected_tokens);
