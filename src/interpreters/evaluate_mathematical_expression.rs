@@ -90,23 +90,21 @@ impl Expr {
             expr
         }
 
-        fn primary(tokens: &mut Peekable<impl Iterator<Item = Token>>) -> Result<Expr, Cow<'static, str>> {
-            match tokens.next() {
-                None => Err("Invalid ending!".into()),
-                Some(token) => match token.t_type {
-                    TType::Num(num) => Ok(Expr::Num(num)),
-                    TType::LeftParen => {
-                        let expr = term(tokens)?;
-                        match tokens.next() {
-                            Some(token) => match token.t_type {
-                                TType::RightParen => Ok(Expr::Grouping(Box::new(expr))),
-                                _ => Err(format!("Invalid paren! index:{0}", token.index).into()),
-                            },
-                            None => Err("Invalid paren!".into()),
-                        }
+        fn primary(tokens: &mut Peekable<impl Iterator<Item=Token>>) -> Result<Expr, Cow<'static, str>> {
+            let token = tokens.next().ok_or("Invalid ending!")?;
+            match token.t_type {
+                TType::Num(num) => Ok(Expr::Num(num)),
+                TType::LeftParen => {
+                    let expr = term(tokens)?;
+                    match tokens.next() {
+                        Some(token) => match token.t_type {
+                            TType::RightParen => Ok(Expr::Grouping(Box::new(expr))),
+                            _ => Err(format!("Invalid paren! index:{0}", token.index).into()),
+                        },
+                        None => Err("Invalid paren!".into()),
                     }
-                    _ => Err(format!("Invalid token! index:{0}", token.index).into()),
-                },
+                }
+                _ => Err(format!("Invalid token! index:{0}", token.index).into()),
             }
         }
 
@@ -147,7 +145,9 @@ fn scan(str: &str) -> impl Iterator<Item = Token> + '_{
                 let token = match ch {
                     '0'..='9' => {
                         let num_str: String = iter::once(ch)
-                            .chain(iter.peeking_take_while(|(_, ch)| ch.is_numeric() || *ch == '.').map(|(_, ch)| ch))
+                            .chain(iter
+                                .peeking_take_while(|(_, ch)| ch.is_numeric() || *ch == '.')
+                                .map(|(_, ch)| ch))
                             .collect();
                         let num = num_str.parse::<f64>().unwrap_or_else(|_| panic!("Invalid token! index:{0}", index));
                         Token { index, len: num_str.len(), t_type: TType::Num(num) }
@@ -175,8 +175,7 @@ fn scan(str: &str) -> impl Iterator<Item = Token> + '_{
 #[cfg(test)]
 mod tests {
     use super::calc;
-    use crate::evaluate_mathematical_expression::{scan, TType, Token};
-    use itertools::Itertools;
+    use crate::interpreters::evaluate_mathematical_expression::{scan, TType, Token};
 
     #[test]
     fn scan_test() {

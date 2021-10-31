@@ -1,3 +1,6 @@
+//NOTE: https://www.codewars.com/kata/534e01fbbb17187c7e0000c6
+//NOTE: recursive iterators in Rust https://fasterthanli.me/articles/recursive-iterators-rust
+//NOTE: missing lifetime spicifier https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
 pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
     let mut spiral = (0..size)
         .map(|_| vec![0 as i8; size])
@@ -33,6 +36,5 @@ pub fn spiralize(size: usize) -> Vec<Vec<i8>> {
     }
 }
 
-// missing lifetime spicifier
-// https://depth-first.com/articles/2020/06/22/returning-rust-iterators/
-// recursive iterators in Rust https://fasterthanli.me/articles/recursive-iterators-rust
+
+

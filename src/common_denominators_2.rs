@@ -1,3 +1,4 @@
+// NOTE: can be used gcg and lcd of integer types
 fn gcd(a: i64, b: i64) -> i64 {
     if b == 0 {
         a

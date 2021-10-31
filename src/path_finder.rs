@@ -1,3 +1,6 @@
+// NOTE: recursive functions if rust
+// https://stackoverflow.com/questions/16946888/is-it-possible-to-make-a-recursive-closure-in-rust
+
 use itertools::{self, Itertools};
 fn path_finder(maze: &str) -> bool {
     let mut v_maze = maze
@@ -6,6 +9,7 @@ fn path_finder(maze: &str) -> bool {
         .map(|str| str.chars().collect_vec())
         .collect_vec();
     return path_finder_rec(&mut v_maze, 0, 0);
+
     fn path_finder_rec(maze: &mut Vec<Vec<char>>, i: usize, j: usize) -> bool {
         let end_i = maze.len() - 1;
         let end_j = maze[0].len() - 1;
@@ -21,8 +25,6 @@ fn path_finder(maze: &str) -> bool {
             })
     }
 }
-// recursive functions
-// https://stackoverflow.com/questions/16946888/is-it-possible-to-make-a-recursive-closure-in-rust
 
 #[cfg(test)]
 mod tests {

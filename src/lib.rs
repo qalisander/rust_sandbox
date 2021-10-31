@@ -3,6 +3,7 @@
 #![feature(format_args_capture)]
 #![feature(type_alias_impl_trait)]
 #![feature(step_trait)]
+//#![feature(box_patterns)]
 //#![feature(hash_set_entry)]
 //#![feature(in_band_lifetimes)]
 
@@ -18,8 +19,6 @@ mod rail_fence_cipher;
 mod n_queens_challenge_version;
 pub mod sudoku;
 pub mod spiral;
-mod three_pass_compiler;
-mod simple_interactive_interpreter;
 mod test_frameworks_test;
 pub mod nonogram_solvers;
-mod evaluate_mathematical_expression;
+mod interpreters;
