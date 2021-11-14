@@ -507,5 +507,3 @@ fn invalid_function_args(){
     i.input("z = 0");
     assert!(i.input("fn add x y => x + z").is_err());
 }
-
-
