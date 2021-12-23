@@ -24,7 +24,7 @@ impl Sudoku {
             }
         }
 
-        return true;
+        true
     }
 
     fn is_len_invalid(&self) -> bool {

@@ -13,6 +13,9 @@ log = "0.4.14"
 env_logger = "0.9.0"
 bit-set = "0.5.2"
 bit-vec = "0.6.3"
+num = "0.4.0"
+rand = "0.8.4"
+rayon = "1.5.1"
 
 [dev-dependencies]
 test-case = "1.2.0"
@@ -21,6 +24,10 @@ parameterized = "0.3.1"
 criterion = "0.3.5"
 criterion-macro = "0.3"
 #bencher = "0.1.4"
+
+#NOTE: fore valgrind profiler
+#[profile.release]
+#debug = true
 
 [[bench]]
 name = "testbench_1"

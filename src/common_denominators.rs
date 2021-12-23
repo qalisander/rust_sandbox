@@ -15,6 +15,7 @@ fn convert_fracts(input: Vec<(i64, i64)>) -> Vec<(i64, i64)> {
         .collect()
 }
 
+// NOTE nuber lcm and gcf can be used
 /// lowest common multiple
 fn lcm(x: i64, y: i64) -> i64 {
     ((x as u64) * (y as u64) / gcf(x, y) as u64) as i64
