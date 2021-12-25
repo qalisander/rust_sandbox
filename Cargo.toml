@@ -1,5 +1,5 @@
 [package]
-name = "rust_lab"
+name = "rust_sandbox"
 version = "0.1.0"
 authors = ["qalisander <qalisander@gmail.com>"]
 edition = "2021"
@@ -25,7 +25,7 @@ criterion = "0.3.5"
 criterion-macro = "0.3"
 #bencher = "0.1.4"
 
-#NOTE: fore valgrind profiler
+#NOTE: for valgrind profiler
 #[profile.release]
 #debug = true
 
