@@ -23,4 +23,4 @@ mod test_frameworks_test;
 pub mod nonogram_solvers;
 mod interpreters;
 pub mod blox_solver;
-mod blox_solver_tests;
+pub mod blox_solver_tests;

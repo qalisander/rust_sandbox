@@ -1,31 +1,59 @@
 // https://www.codewars.com/kata/5a2a597a8882f392020005e5/train/rust
 
 use itertools::Itertools;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::rc::{Rc, Weak};
+use crate::blox_solver::Tile::Unvisited;
 
-type Grid = Vec<Vec<Option<i32>>>;// TODO: use another enum and store here previous index
+//type Grid = Vec<Vec<Option<i32>>>;// TODO: use another enum and store here previous index
+type Grid = Vec<Vec<Rc<Tile>>>;
 
 // TODO: try use here reference counter
-struct Tile { // TODO: turn into enum
-    orientation: Orientation, //TODO: we don't need orientation here
-    len: i32, //TODO: we don't need to store len here
-    previous: Weak<Tile>,
-}
+//struct Tile { // TODO: turn into enum
+//    orientation: Orientation, //TODO: we don't need orientation here
+//    len: i32, //TODO: we don't need to store len here
+//    previous: Weak<Tile>,
+//}
 
-enum Tile2{
+#[derive(Clone)]
+enum Tile{
     Visited(Weak<Tile>, char),
     Unvisited,
     Begin,
     Space,
+    End,
 }
 
 struct Field {
-    upright: Grid,
-    vertical: Grid,
-    horizontal: Grid,
+    grid: HashMap<Orientation, Grid>,
     begin: (isize, isize),
     end: (isize, isize),
+}
+
+impl Field {
+
+    fn grid(&self, orientation: Orientation) -> &Grid {
+        self.grid.get(&orientation).unwrap()
+    }
+
+    fn grid_mut(&mut self, orientation: Orientation) -> &mut Grid {
+        self.grid.get_mut(&orientation).unwrap()
+    }
+
+    fn is_available(&self, state: State) -> bool {
+        let grid = self.grid(state.orientation);
+
+        let i_max = grid.len() as isize;
+        let j_max = grid[0].len() as isize;
+
+        let (i, j) = state.index;
+        if i < 0 || j >= i_max || j < 0 || j >= j_max {
+            return false;
+        }
+
+        let (i, j) = state.usize_index();
+        matches!(*grid[i][j], Tile::Unvisited | Tile::End) // TODO: use len in state
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -41,29 +69,17 @@ impl State {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 enum Orientation {
     Upright,
     Vertical,
     Horizontal,
 }
 
-fn is_state_available(grid: &Grid, state: State) -> bool {
-    let i_max = grid.len() as isize;
-    let j_max = grid[0].len() as isize;
 
-    let (i, j) = state.index;
-    if i < 0 || j >= i_max || j < 0 || j >= j_max {
-        return false;
-    }
-
-    let (i, j) = state.usize_index();
-    matches!(grid[i][j], Some(-1)) // TODO: use len in state
-}
 
 pub fn blox_solver(puzzle: &[&str]) -> String {
     let mut field = create_filed(puzzle);
-
     //TODO:
     // - check current state
     // - try move to another state according to current state
@@ -78,9 +94,9 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
 
     while let Some(state) = deque.pop_front() {
         match state.orientation {
-            Orientation::Upright if is_state_available(&field.upright, state) => {
+            Orientation::Upright if field.is_available(state) => {
                 let (i, j) = state.usize_index();
-                field.upright[i][j] = Some(state.len);
+                field.grid_mut(Orientation::Upright)[i][j] = Some(state.len);
 
                 let dirs = [
                     (Orientation::Horizontal, (0, 1)),
@@ -117,45 +133,38 @@ fn as_usize(index: (isize, isize)) -> (usize, usize) {
 fn create_filed(puzzle: &[&str]) -> Field {
     let begin = index_of(puzzle, 'B');
     let end = index_of(puzzle, 'B');
-    let mut upright_field = puzzle
-        .iter()
-        .map(|row| {
-            row.chars()
-                .map(|ch| match ch {
-                    '0' | 'B' | 'X' => None,
-                    '1' => Some(-1),
-                    _ => unreachable!(),
-                })
-                .collect_vec()
-        })
-        .collect_vec();
+    let mut upright_field = create_field(puzzle);
 
     let i_max = upright_field.len();
     let j_max = upright_field[0].len();
 
-    let mut vertical_field = upright_field.clone();
-    let mut horizontal_field = upright_field.clone();
+    let mut vertical_field = create_field(puzzle);
+    let mut horizontal_field = create_field(puzzle);
     for i in 0..i_max {
         for j in 0..j_max {
             let next_j = j + 1;
-            if next_j >= j_max || upright_field[i][next_j].is_none() {
-                horizontal_field[i][j] = None;
+            if next_j >= j_max || matches!(*upright_field[i][next_j], Tile::Space) {
+                horizontal_field[i][j] = Rc::new(Tile::Space);
             }
 
             let next_i = i + 1;
-            if next_i >= i_max || upright_field[next_i][j].is_none() {
-                vertical_field[i][j] = None;
+            if next_i >= i_max || matches!(*upright_field[next_i][j], Tile::Space) {
+                vertical_field[i][j] = Rc::new(Tile::Space);
             }
         }
     }
 
-    upright_field[begin.0][begin.1] = Some(0);
-    upright_field[end.0][end.1] = Some(-1);
+    upright_field[begin.0][begin.1] = Rc::new(Tile::Begin);
+    upright_field[end.0][end.1] = Rc::new(Tile::End);
+
+    let grid = HashMap::from([
+        (Orientation::Upright, upright_field),
+        (Orientation::Horizontal, horizontal_field),
+        (Orientation::Vertical, vertical_field),
+    ]);
 
     return Field {
-        upright: upright_field,
-        vertical: vertical_field,
-        horizontal: horizontal_field,
+        grid,
         begin: (begin.0 as isize, begin.1 as isize),
         end: (end.0 as isize, end.1 as isize),
     };
@@ -169,4 +178,21 @@ fn create_filed(puzzle: &[&str]) -> Field {
             .unwrap()
             .0
     }
+
+    fn create_field(puzzle: &[&str]) -> Vec<Vec<Rc<Tile>>> {
+        puzzle
+            .iter()
+            .map(|row| {
+                row.chars()
+                    .map(|ch| match ch {
+                        '1' | 'B' | 'X'  => Tile::Unvisited,
+                        '0' => Tile::Space,
+                        _ => unreachable!(),
+                    })
+                    .map(|tile| Rc::new(tile))
+                    .collect_vec()
+            })
+            .collect_vec()
+    }
 }
+

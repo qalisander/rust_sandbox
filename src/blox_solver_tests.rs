@@ -1,7 +1,7 @@
 use crate::blox_solver::blox_solver;
 
 #[test]
-fn example_tests() {
+pub fn example_tests() {
     let fixed_tests = [
         vec![
             "1110000000",
