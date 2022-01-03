@@ -1,23 +1,17 @@
 // https://www.codewars.com/kata/5a2a597a8882f392020005e5/train/rust
 
 use itertools::Itertools;
+use log::set_logger_racy;
 use std::collections::{HashMap, VecDeque};
+use std::iter::from_fn;
+use std::ops::Deref;
 use std::rc::{Rc, Weak};
-use crate::blox_solver::Tile::Unvisited;
 
-//type Grid = Vec<Vec<Option<i32>>>;// TODO: use another enum and store here previous index
 type Grid = Vec<Vec<Rc<Tile>>>;
 
-// TODO: try use here reference counter
-//struct Tile { // TODO: turn into enum
-//    orientation: Orientation, //TODO: we don't need orientation here
-//    len: i32, //TODO: we don't need to store len here
-//    previous: Weak<Tile>,
-//}
-
 #[derive(Clone)]
-enum Tile{
-    Visited(Weak<Tile>, char),
+enum Tile {
+    Visited { from: Weak<Tile>, ch: char },
     Unvisited,
     Begin,
     Space,
@@ -26,12 +20,11 @@ enum Tile{
 
 struct Field {
     grid: HashMap<Orientation, Grid>,
-    begin: (isize, isize),
-    end: (isize, isize),
+    begin: (usize, usize),
+    end: (usize, usize),
 }
 
 impl Field {
-
     fn grid(&self, orientation: Orientation) -> &Grid {
         self.grid.get(&orientation).unwrap()
     }
@@ -60,12 +53,36 @@ impl Field {
 struct State {
     index: (isize, isize),
     orientation: Orientation,
-    len: i32, //TODO: add chars here
+    ch: char,
 }
 
 impl State {
     fn usize_index(&self) -> (usize, usize) {
         (self.index.0 as usize, self.index.1 as usize)
+    }
+
+    fn get_dirs(&self) -> impl Iterator<Item = (Orientation, (isize, isize), char)> {
+        match &self.orientation {
+            Orientation::Upright => [
+                (Orientation::Horizontal, (0, 1), 'R'),
+                (Orientation::Horizontal, (0, -2), 'L'),
+                (Orientation::Vertical, (1, 0), 'D'),
+                (Orientation::Vertical, (-2, 0), 'U'),
+            ],
+            Orientation::Vertical => [
+                (Orientation::Vertical, (0, 1), 'R'),
+                (Orientation::Vertical, (0, -1), 'L'),
+                (Orientation::Upright, (2, 0), 'D'),
+                (Orientation::Upright, (-1, 0), 'U'),
+            ],
+            Orientation::Horizontal => [
+                (Orientation::Upright, (0, 2), 'R'),
+                (Orientation::Upright, (0, -1), 'L'),
+                (Orientation::Horizontal, (1, 0), 'D'),
+                (Orientation::Horizontal, (-1, 0), 'U'),
+            ],
+        }
+        .into_iter()
     }
 }
 
@@ -76,58 +93,51 @@ enum Orientation {
     Horizontal,
 }
 
-
-
 pub fn blox_solver(puzzle: &[&str]) -> String {
     let mut field = create_filed(puzzle);
-    //TODO:
-    // - check current state
-    // - try move to another state according to current state
-    // - while queue is not empty
-
     let begin_state = State {
-        index: field.begin,
+        index: (field.begin.0 as isize, field.begin.1 as isize),
         orientation: Orientation::Upright,
-        len: 0,
+        ch: '*',
     };
+
     let mut deque = VecDeque::from([begin_state]);
 
-    while let Some(state) = deque.pop_front() {
-        match state.orientation {
-            Orientation::Upright if field.is_available(state) => {
-                let (i, j) = state.usize_index();
-                field.grid_mut(Orientation::Upright)[i][j] = Some(state.len);
+    while let Some(popped_state) = deque.pop_front() {
+        let new_states = popped_state
+            .get_dirs()
+            .map(|(orientation, delta, ch)| State {
+                orientation,
+                index: (popped_state.index.0 + delta.0, popped_state.index.1 + delta.1),
+                ch,
+            })
+            .filter(|&state| field.is_available(state))
+            .collect_vec();
 
-                let dirs = [
-                    (Orientation::Horizontal, (0, 1)),
-                    (Orientation::Horizontal, (0, -2)),
-                    (Orientation::Vertical, (1, 0)),
-                    (Orientation::Vertical, (-2, 0)),
-                ];
+            for new_state in &new_states {
+                let (i, j) = popped_state.usize_index();
+                let tile = &field.grid(popped_state.orientation)[i][j];
 
-                //TODO: use as a separate method
-                let next_states = dirs.map(|(orientation, delta)| State {
-                    orientation,
-                    index: (state.index.0 + delta.0, state.index.1 + delta.1),
-                    len: state.len + 1,
-                });
-
-                deque.extend(next_states);
+                let (visited_i, visited_j) = new_state.usize_index();
+                let visited_tile = Tile::Visited {
+                    ch: new_state.ch,
+                    from: Rc::downgrade(tile)
+                };
+                field.grid_mut(new_state.orientation)[visited_i][visited_j] = Rc::new(visited_tile);
             }
-            Orientation::Vertical => {}
-            Orientation::Horizontal => {}
-            _ => (),
-        }
+
+        deque.extend(new_states);
     }
 
-    // TODO: find shortest way by going back
+    let mut ans = String::new();
+    let mut tile = field.grid(Orientation::Upright)[field.end.0][field.end.1].clone();
 
-    todo!("your task should you choose to accept it");
-}
+    while let Tile::Visited {ch, from} = tile.deref() {
+        ans.push(*ch);
+        tile = from.upgrade().unwrap();
+    }
 
-// TODO: move to state struct impl
-fn as_usize(index: (isize, isize)) -> (usize, usize) {
-    (index.0 as usize, index.1 as usize)
+    ans.chars().rev().collect()
 }
 
 fn create_filed(puzzle: &[&str]) -> Field {
@@ -165,8 +175,8 @@ fn create_filed(puzzle: &[&str]) -> Field {
 
     return Field {
         grid,
-        begin: (begin.0 as isize, begin.1 as isize),
-        end: (end.0 as isize, end.1 as isize),
+        begin: (begin.0, begin.1),
+        end: (end.0, end.1),
     };
 
     fn index_of(puzzle: &[&str], char: char) -> (usize, usize) {
@@ -185,7 +195,7 @@ fn create_filed(puzzle: &[&str]) -> Field {
             .map(|row| {
                 row.chars()
                     .map(|ch| match ch {
-                        '1' | 'B' | 'X'  => Tile::Unvisited,
+                        '1' | 'B' | 'X' => Tile::Unvisited,
                         '0' => Tile::Space,
                         _ => unreachable!(),
                     })
@@ -195,4 +205,3 @@ fn create_filed(puzzle: &[&str]) -> Field {
             .collect_vec()
     }
 }
-
