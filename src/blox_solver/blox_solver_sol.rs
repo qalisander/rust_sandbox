@@ -241,4 +241,79 @@ fn create_filed(puzzle: &[&str]) -> Field {
     }
 }
 
+//NOTE: smn's short solution
+//mod blox {
+//    use std::collections::VecDeque;
+//    use bit_set::BitSet;
+//
+//    pub fn blox_solver(puzzle: &[&str]) -> String {
+//        let sizey = puzzle.len() as i32;
+//        let sizex = puzzle[0].len() as i32;
+//        let mut visited = BitSet::with_capacity((sizey * sizex * 3) as usize);
+//        let get = |x: i32, y: i32| puzzle[y as usize].as_bytes()[x as usize];
+//        let mut next = VecDeque::new();
+//
+//        for y in 0..sizey {
+//            for x in 0..sizex {
+//                if get(x, y) == b'B' {
+//                    next.push_back((x, y, 0, "".to_string()));
+//                }
+//            }
+//        }
+//
+//        // 0: #          2: #
+//        //       1: ##      #
+//        while let Some((x, y, rot, path)) = next.pop_front() {
+//            // Check if not ouside
+//            if x < 0 || y < 0 || x + (rot == 1) as i32 >= sizex ||
+//                y + (rot == 2) as i32 >= sizey {
+//                continue
+//            }
+//
+//            // Check if not visited
+//            let visited_pos = ((y * sizex + x) * 3 + rot) as usize;
+//            if visited.contains(visited_pos) {
+//                continue
+//            }
+//
+//            // Check if found the exit
+//            if rot == 0 && get(x, y) == b'X' {
+//                return path
+//            }
+//
+//            // Check if not above air
+//            if get(x, y) == b'0' ||
+//                (rot == 1 && get(x + 1, y) == b'0') ||
+//                (rot == 2 && get(x, y + 1) == b'0') {
+//                continue
+//            }
+//
+//            visited.insert(visited_pos);
+//
+//            match rot {
+//                0 => {
+//                    next.push_back((x-2, y, 1, format!("{}L", path)));
+//                    next.push_back((x+1, y, 1, format!("{}R", path)));
+//                    next.push_back((x, y-2, 2, format!("{}U", path)));
+//                    next.push_back((x, y+1, 2, format!("{}D", path)));
+//                }
+//                1 => {
+//                    next.push_back((x-1, y, 0, format!("{}L", path)));
+//                    next.push_back((x+2, y, 0, format!("{}R", path)));
+//                    next.push_back((x, y-1, 1, format!("{}U", path)));
+//                    next.push_back((x, y+1, 1, format!("{}D", path)));
+//                }
+//                2 => {
+//                    next.push_back((x-1, y, 2, format!("{}L", path)));
+//                    next.push_back((x+1, y, 2, format!("{}R", path)));
+//                    next.push_back((x, y-1, 0, format!("{}U", path)));
+//                    next.push_back((x, y+2, 0, format!("{}D", path)));
+//                }
+//                _ => unreachable!(),
+//            }
+//        }
+//        unreachable!()
+//    }
+//}
+
 
