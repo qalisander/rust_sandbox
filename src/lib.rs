@@ -22,5 +22,4 @@ pub mod spiral;
 mod test_frameworks_test;
 pub mod nonogram_solvers;
 mod interpreters;
-pub mod blox_solver;
-pub mod blox_solver_tests;
+mod blox_solver;

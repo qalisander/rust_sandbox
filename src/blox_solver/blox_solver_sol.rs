@@ -1,15 +1,16 @@
 // https://www.codewars.com/kata/5a2a597a8882f392020005e5/train/rust
 
 use itertools::Itertools;
-use log::set_logger_racy;
 use std::collections::{HashMap, VecDeque};
-use std::iter::from_fn;
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
+use crate::blox_solver::blox_solver_sol::Orientation::{Horizontal, Upright, Vertical};
 
 type Grid = Vec<Vec<Rc<Tile>>>;
 
-#[derive(Clone)]
+//NOTE: Solution with "from" index instead of weak reference would be prlly simpler and rust idiomatic
+#[derive(Clone, Debug)]
 enum Tile {
     Visited { from: Weak<Tile>, ch: char },
     Unvisited,
@@ -22,6 +23,34 @@ struct Field {
     grid: HashMap<Orientation, Grid>,
     begin: (usize, usize),
     end: (usize, usize),
+}
+
+impl Debug for Field {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f)?;
+        let orientations = [Upright, Horizontal, Vertical]
+            .iter()
+            .map(|orientation| (orientation, self.grid.get(orientation).unwrap()));
+        for (orientation, grid) in orientations {
+            writeln!(f, "{:?}", orientation)?;
+            let formatted_row = grid
+                .iter()
+                .flat_map(|row| row.iter().map(|tile| tile_to_char(tile)).chain(['\n']))
+                .collect::<String>();
+            writeln!(f, "{}", formatted_row)?;
+        }
+        return writeln!(f);
+
+        fn tile_to_char(tile: &Tile) -> char {
+            match tile {
+                Tile::Visited { ch, .. } => *ch,
+                Tile::Unvisited => '.',
+                Tile::Begin => 'B',
+                Tile::Space => '0',
+                Tile::End => 'X',
+            }
+        }
+    }
 }
 
 impl Field {
@@ -40,16 +69,16 @@ impl Field {
         let j_max = grid[0].len() as isize;
 
         let (i, j) = state.index;
-        if i < 0 || j >= i_max || j < 0 || j >= j_max {
+        if i < 0 || i >= i_max || j < 0 || j >= j_max {
             return false;
         }
 
         let (i, j) = state.usize_index();
-        matches!(*grid[i][j], Tile::Unvisited | Tile::End) // TODO: use len in state
+        matches!(*grid[i][j], Tile::Unvisited | Tile::End)
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct State {
     index: (isize, isize),
     orientation: Orientation,
@@ -86,7 +115,7 @@ impl State {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 enum Orientation {
     Upright,
     Vertical,
@@ -104,35 +133,41 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
     let mut deque = VecDeque::from([begin_state]);
 
     while let Some(popped_state) = deque.pop_front() {
+//        dbg!(&field);
+//        dbg!(&deque);
+
         let new_states = popped_state
             .get_dirs()
             .map(|(orientation, delta, ch)| State {
                 orientation,
-                index: (popped_state.index.0 + delta.0, popped_state.index.1 + delta.1),
+                index: (
+                    popped_state.index.0 + delta.0,
+                    popped_state.index.1 + delta.1,
+                ),
                 ch,
             })
             .filter(|&state| field.is_available(state))
             .collect_vec();
 
-            for new_state in &new_states {
-                let (i, j) = popped_state.usize_index();
-                let tile = &field.grid(popped_state.orientation)[i][j];
+        for new_state in &new_states {
+            let (i, j) = popped_state.usize_index();
+            let tile = &field.grid(popped_state.orientation)[i][j];
 
-                let (visited_i, visited_j) = new_state.usize_index();
-                let visited_tile = Tile::Visited {
-                    ch: new_state.ch,
-                    from: Rc::downgrade(tile)
-                };
-                field.grid_mut(new_state.orientation)[visited_i][visited_j] = Rc::new(visited_tile);
-            }
+            let (visited_i, visited_j) = new_state.usize_index();
+            let visited_tile = Tile::Visited {
+                ch: new_state.ch,
+                from: Rc::downgrade(tile),
+            };
+            field.grid_mut(new_state.orientation)[visited_i][visited_j] = Rc::new(visited_tile);
+        }
 
         deque.extend(new_states);
     }
 
     let mut ans = String::new();
-    let mut tile = field.grid(Orientation::Upright)[field.end.0][field.end.1].clone();
+    let mut tile = field.grid(Upright)[field.end.0][field.end.1].clone();
 
-    while let Tile::Visited {ch, from} = tile.deref() {
+    while let Tile::Visited { ch, from } = tile.deref() {
         ans.push(*ch);
         tile = from.upgrade().unwrap();
     }
@@ -142,7 +177,7 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
 
 fn create_filed(puzzle: &[&str]) -> Field {
     let begin = index_of(puzzle, 'B');
-    let end = index_of(puzzle, 'B');
+    let end = index_of(puzzle, 'X');
     let mut upright_field = create_field(puzzle);
 
     let i_max = upright_field.len();
@@ -199,9 +234,11 @@ fn create_filed(puzzle: &[&str]) -> Field {
                         '0' => Tile::Space,
                         _ => unreachable!(),
                     })
-                    .map(|tile| Rc::new(tile))
+                    .map(Rc::new)
                     .collect_vec()
             })
             .collect_vec()
     }
 }
+
+

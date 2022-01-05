@@ -1,4 +1,4 @@
-use crate::blox_solver::blox_solver;
+use crate::blox_solver::blox_solver_sol::blox_solver;
 
 #[test]
 pub fn example_tests() {
