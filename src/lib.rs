@@ -23,3 +23,6 @@ mod test_frameworks_test;
 pub mod nonogram_solvers;
 mod interpreters;
 mod blox_solver;
+mod street_fighter;
+mod transforming_maze_solver;
+mod transforming_maze_solver_tests;
