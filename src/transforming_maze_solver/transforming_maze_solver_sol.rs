@@ -31,6 +31,7 @@ enum Tile {
 type Grid = Vec<Vec<Tile>>;
 struct Field {
     grids: [Grid; 4],
+    index: usize,
     begin: (i8, i8),
     end: (i8, i8),
 }
@@ -142,6 +143,7 @@ impl Field {
 
         Field {
             grids: grid,
+            index: 0,
             begin: begin.expect("Begin cell not found!"),
             end: end.expect("End cell not found!"),
         }
