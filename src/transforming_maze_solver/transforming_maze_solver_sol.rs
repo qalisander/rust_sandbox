@@ -66,7 +66,8 @@ impl Debug for Field {
                 let index = str_row_index % 3;
                 let str = grid[row_index]
                     .iter()
-                    .flat_map(|arr| arr[index..(3 + index)].iter())
+                    .flat_map(|arr| arr[3*index..3*(index + 1)].iter())
+                    .intersperse(&' ')
                     .collect::<String>();
                 writeln!(f, "{}", str)?;
             }
@@ -76,6 +77,10 @@ impl Debug for Field {
         fn format_walls(walls: DIR, ch_inside: char) -> [char; 9] {
             let mut formatted_dir = [' '; 9];
             formatted_dir[4] = ch_inside;
+            formatted_dir[0] = '┌';
+            formatted_dir[2] = '┐';
+            formatted_dir[6] = '└';
+            formatted_dir[8] = '┘';
             if walls & N_DIR != 0 {
                 formatted_dir[1] = '—'
             }
@@ -128,7 +133,7 @@ impl Field {
                         row.iter()
                             .enumerate()
                             .map(|(j, &dir)| {
-                                let dir = if dir & DIR_MASK != dir {
+                                let dir = if matches!(dir, END | BEGIN){
                                     dir
                                 } else {
                                     shift_dir(dir, shift)
@@ -163,13 +168,6 @@ pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
 }
 
 pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
-    if dir & DIR_MASK != dir {
-        return dir;
-    }
-    let shifted = dir << shift;
-    if shifted & DIR_MASK == shifted {
-        shifted
-    } else {
-        (shifted & DIR_MASK) | 0b00000001
-    }
+    let shifted = dir << (shift % 4);
+    (shifted & DIR_MASK) | (shifted >> 4)
 }
