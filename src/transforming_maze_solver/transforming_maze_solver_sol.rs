@@ -66,7 +66,7 @@ impl Debug for Field {
                 let index = str_row_index % 3;
                 let str = grid[row_index]
                     .iter()
-                    .flat_map(|arr| arr[3*index..3*(index + 1)].iter())
+                    .flat_map(|arr| arr[3 * index..3 * (index + 1)].iter())
                     .intersperse(&' ')
                     .collect::<String>();
                 writeln!(f, "{}", str)?;
@@ -75,25 +75,17 @@ impl Debug for Field {
         return writeln!(f);
 
         fn format_walls(walls: DIR, ch_inside: char) -> [char; 9] {
-            let mut formatted_dir = [' '; 9];
-            formatted_dir[4] = ch_inside;
-            formatted_dir[0] = '┌';
-            formatted_dir[2] = '┐';
-            formatted_dir[6] = '└';
-            formatted_dir[8] = '┘';
-            if walls & N_DIR != 0 {
-                formatted_dir[1] = '—'
-            }
-            if walls & W_DIR != 0 {
-                formatted_dir[3] = '|'
-            }
-            if walls & E_DIR != 0 {
-                formatted_dir[5] = '|'
-            }
-            if walls & S_DIR != 0 {
-                formatted_dir[7] = '—'
-            }
-            formatted_dir
+            [
+                '┌',
+                if walls & N_DIR != 0 { '—' } else { ' ' },
+                '┐',
+                if walls & W_DIR != 0 { '|' } else { ' ' },
+                ch_inside,
+                if walls & E_DIR != 0 { '|' } else { ' ' },
+                '└',
+                if walls & S_DIR != 0 { '—' } else { ' ' },
+                '┘',
+            ]
         }
     }
 }
@@ -133,7 +125,7 @@ impl Field {
                         row.iter()
                             .enumerate()
                             .map(|(j, &dir)| {
-                                let dir = if matches!(dir, END | BEGIN){
+                                let dir = if matches!(dir, END | BEGIN) {
                                     dir
                                 } else {
                                     shift_dir(dir, shift)
