@@ -4,7 +4,6 @@ use itertools::Itertools;
 use std::fmt::{Debug, Formatter};
 
 type DIR = i8;
-
 const DIR_MASK: DIR = 0b00001111;
 const E_DIR: DIR = 0b_0001;
 const S_DIR: DIR = 0b_0010;
@@ -28,6 +27,7 @@ enum Tile {
 }
 
 type Grid = Vec<Vec<Tile>>;
+
 struct Field {
     grid: Grid,
     begin: (i8, i8),
@@ -48,11 +48,6 @@ impl Field {
             }
         }
     }
-}
-
-pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
-    let shifted = dir << (shift % 4);
-    (shifted & DIR_MASK) | (shifted >> 4)
 }
 
 impl Debug for Field {
@@ -105,6 +100,11 @@ impl Debug for Field {
             ]
         }
     }
+}
+
+pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
+    let shifted = dir << (shift % 4);
+    (shifted & DIR_MASK) | (shifted >> 4)
 }
 
 fn get_dir_char(delta: (i8, i8)) -> char {
