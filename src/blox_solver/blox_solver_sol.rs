@@ -76,6 +76,72 @@ impl Field {
         let (i, j) = state.usize_index();
         matches!(*grid[i][j], Tile::Unvisited | Tile::End)
     }
+
+    fn new(puzzle: &[&str]) -> Self {
+        let begin = index_of(puzzle, 'B');
+        let end = index_of(puzzle, 'X');
+        let mut upright_field = create_field(puzzle);
+
+        let i_max = upright_field.len();
+        let j_max = upright_field[0].len();
+
+        let mut vertical_field = create_field(puzzle);
+        let mut horizontal_field = create_field(puzzle);
+        for i in 0..i_max {
+            for j in 0..j_max {
+                let next_j = j + 1;
+                if next_j >= j_max || matches!(*upright_field[i][next_j], Tile::Space) {
+                    horizontal_field[i][j] = Rc::new(Tile::Space);
+                }
+
+                let next_i = i + 1;
+                if next_i >= i_max || matches!(*upright_field[next_i][j], Tile::Space) {
+                    vertical_field[i][j] = Rc::new(Tile::Space);
+                }
+            }
+        }
+
+        upright_field[begin.0][begin.1] = Rc::new(Tile::Begin);
+        upright_field[end.0][end.1] = Rc::new(Tile::End);
+
+        let grid = HashMap::from([
+            (Orientation::Upright, upright_field),
+            (Orientation::Horizontal, horizontal_field),
+            (Orientation::Vertical, vertical_field),
+        ]);
+
+        return Field {
+            grid,
+            begin: (begin.0, begin.1),
+            end: (end.0, end.1),
+        };
+
+        fn index_of(puzzle: &[&str], char: char) -> (usize, usize) {
+            puzzle
+                .iter()
+                .enumerate()
+                .flat_map(|(i, row)| row.chars().enumerate().map(move |(j, ch)| ((i, j), ch)))
+                .find(|(_, ch)| *ch == char)
+                .unwrap()
+                .0
+        }
+
+        fn create_field(puzzle: &[&str]) -> Vec<Vec<Rc<Tile>>> {
+            puzzle
+                .iter()
+                .map(|row| {
+                    row.chars()
+                        .map(|ch| match ch {
+                            '1' | 'B' | 'X' => Tile::Unvisited,
+                            '0' => Tile::Space,
+                            _ => unreachable!(),
+                        })
+                        .map(Rc::new)
+                        .collect_vec()
+                })
+                .collect_vec()
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -123,7 +189,7 @@ enum Orientation {
 }
 
 pub fn blox_solver(puzzle: &[&str]) -> String {
-    let mut field = create_filed(puzzle);
+    let mut field = Field::new(puzzle);
     let begin_state = State {
         index: (field.begin.0 as isize, field.begin.1 as isize),
         orientation: Orientation::Upright,
@@ -173,72 +239,6 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
     }
 
     ans.chars().rev().collect()
-}
-
-fn create_filed(puzzle: &[&str]) -> Field {
-    let begin = index_of(puzzle, 'B');
-    let end = index_of(puzzle, 'X');
-    let mut upright_field = create_field(puzzle);
-
-    let i_max = upright_field.len();
-    let j_max = upright_field[0].len();
-
-    let mut vertical_field = create_field(puzzle);
-    let mut horizontal_field = create_field(puzzle);
-    for i in 0..i_max {
-        for j in 0..j_max {
-            let next_j = j + 1;
-            if next_j >= j_max || matches!(*upright_field[i][next_j], Tile::Space) {
-                horizontal_field[i][j] = Rc::new(Tile::Space);
-            }
-
-            let next_i = i + 1;
-            if next_i >= i_max || matches!(*upright_field[next_i][j], Tile::Space) {
-                vertical_field[i][j] = Rc::new(Tile::Space);
-            }
-        }
-    }
-
-    upright_field[begin.0][begin.1] = Rc::new(Tile::Begin);
-    upright_field[end.0][end.1] = Rc::new(Tile::End);
-
-    let grid = HashMap::from([
-        (Orientation::Upright, upright_field),
-        (Orientation::Horizontal, horizontal_field),
-        (Orientation::Vertical, vertical_field),
-    ]);
-
-    return Field {
-        grid,
-        begin: (begin.0, begin.1),
-        end: (end.0, end.1),
-    };
-
-    fn index_of(puzzle: &[&str], char: char) -> (usize, usize) {
-        puzzle
-            .iter()
-            .enumerate()
-            .flat_map(|(i, row)| row.chars().enumerate().map(move |(j, ch)| ((i, j), ch)))
-            .find(|(_, ch)| *ch == char)
-            .unwrap()
-            .0
-    }
-
-    fn create_field(puzzle: &[&str]) -> Vec<Vec<Rc<Tile>>> {
-        puzzle
-            .iter()
-            .map(|row| {
-                row.chars()
-                    .map(|ch| match ch {
-                        '1' | 'B' | 'X' => Tile::Unvisited,
-                        '0' => Tile::Space,
-                        _ => unreachable!(),
-                    })
-                    .map(Rc::new)
-                    .collect_vec()
-            })
-            .collect_vec()
-    }
 }
 
 //NOTE: smn's short solution
