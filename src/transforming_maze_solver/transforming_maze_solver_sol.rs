@@ -1,5 +1,6 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
+use std::collections::VecDeque;
 use itertools::Itertools;
 use std::fmt::{Debug, Formatter};
 
@@ -28,13 +29,47 @@ enum Tile {
 
 type Grid = Vec<Vec<Tile>>;
 
-struct Field {
+struct Field {  
     grid: Grid,
     begin: (i8, i8),
     end: (i8, i8),
 }
 
 impl Field {
+    fn new(maze: &Vec<Vec<DIR>>) -> Self {
+        let mut begin = None;
+        let mut end = None;
+        let mut process_dir = |dir, (i, j)| match dir {
+            BEGIN => {
+                begin = Some((i as i8, j as i8));
+                Tile::Begin
+            }
+            END => {
+                end = Some((i as i8, j as i8));
+                Tile::End
+            }
+            dir if dir & DIR_MASK == dir => Tile::Unvisited { walls: dir },
+            dir => panic!("Invalid cell! value: {}; index: {:?}", dir, (i, j)),
+        };
+
+        let grid = maze
+            .iter()
+            .enumerate()
+            .map(|(i, row)| {
+                row.iter()
+                    .enumerate()
+                    .map(|(j, &dir)| process_dir(dir, (i, j)))
+                    .collect_vec()
+            })
+            .collect_vec();
+
+        Field {
+            grid,
+            begin: begin.expect("Begin cell not found!"),
+            end: end.expect("End cell not found!"),
+        }
+    }
+    
     fn rotate_walls(&mut self) {
         for tile in self.grid.iter_mut().flatten() {
             match tile {
@@ -117,43 +152,6 @@ fn get_dir_char(delta: (i8, i8)) -> char {
     }
 }
 
-
-impl Field {
-    fn new(maze: &Vec<Vec<DIR>>) -> Self {
-        let mut begin = None;
-        let mut end = None;
-        let mut process_dir = |dir, (i, j)| match dir {
-            BEGIN => {
-                begin = Some((i as i8, j as i8));
-                Tile::Begin
-            }
-            END => {
-                end = Some((i as i8, j as i8));
-                Tile::End
-            }
-            dir if dir & DIR_MASK == dir => Tile::Unvisited { walls: dir },
-            dir => panic!("Invalid cell! value: {}; index: {:?}", dir, (i, j)),
-        };
-
-        let grid = maze
-            .iter()
-            .enumerate()
-            .map(|(i, row)| {
-                row.iter()
-                    .enumerate()
-                    .map(|(j, &dir)| process_dir(dir, (i, j)))
-                    .collect_vec()
-            })
-            .collect_vec();
-
-        Field {
-            grid,
-            begin: begin.expect("Begin cell not found!"),
-            end: end.expect("End cell not found!"),
-        }
-    }
-}
-
 struct State {
     current: (i8, i8),
     prev: (i8, i8),
@@ -161,6 +159,7 @@ struct State {
 
 pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
     let field = Field::new(maze);
+//    VecDeque::from([State])
     dbg!(&field);
 
 
