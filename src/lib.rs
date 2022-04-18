@@ -25,3 +25,4 @@ mod interpreters;
 mod blox_solver;
 mod street_fighter;
 mod transforming_maze_solver;
+mod weight_for_weight;
