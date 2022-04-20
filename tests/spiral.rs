@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use rust_lab::spiral::{self, spiral_my::spiralize};
+    use rust_sandbox::spiral::{self, spiral_my::spiralize};
 
     #[test]
     fn test5() {

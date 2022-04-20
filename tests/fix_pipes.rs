@@ -1,4 +1,4 @@
-use rust_lab::fix_pipes::fix_pipes_my::*;
+use rust_sandbox::fix_pipes::fix_pipes_my::*;
 
 #[cfg(test)]
 mod sample_tests {

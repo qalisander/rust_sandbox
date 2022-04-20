@@ -1,4 +1,4 @@
-use rust_lab::sudoku::sudoku_my::*;
+use rust_sandbox::sudoku::sudoku_2::Sudoku;
 
 #[test]
 fn good_sudoku() {
