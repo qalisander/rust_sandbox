@@ -1,10 +1,13 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
-use std::collections::VecDeque;
+use core::panicking::panic;
+use crate::sudoku::sudoku_my::seq_is_valid;
 use itertools::Itertools;
+use std::collections::vec_deque::VecDeque;
 use std::fmt::{Debug, Formatter};
 
 type DIR = i8;
+
 const DIR_MASK: DIR = 0b00001111;
 const E_DIR: DIR = 0b_0001;
 const S_DIR: DIR = 0b_0010;
@@ -27,9 +30,15 @@ enum Tile {
     End,
 }
 
+//      |
+//      |
+// -----|----->
+//      |     (j)
+//      V (i)
+
 type Grid = Vec<Vec<Tile>>;
 
-struct Field {  
+struct Field {
     grid: Grid,
     begin: (i8, i8),
     end: (i8, i8),
@@ -69,19 +78,62 @@ impl Field {
             end: end.expect("End cell not found!"),
         }
     }
-    
+
     fn rotate_walls(&mut self) {
         for tile in self.grid.iter_mut().flatten() {
             match tile {
                 Tile::Visited { ref mut walls, .. } => {
                     *walls = shift_dir(*walls, 1);
                 }
-                Tile::Unvisited { ref mut walls, .. } => {
-                    *walls = shift_dir(*walls, 1)
-                }
+                Tile::Unvisited { ref mut walls, .. } => *walls = shift_dir(*walls, 1),
                 _ => {}
             }
         }
+    }
+
+    fn get_next_points(&self, (cur_i, cur_j): (i8, i8)) -> Box<impl Iterator<Item = (i8, i8)>> {
+        if !self.has_valid_size((cur_i, cur_j)) {
+            panic!("Invalid size!");
+        }
+
+        let cur_walls = match self.grid[cur_i as usize][cur_j as usize] {
+            Tile::Visited { walls, .. } => walls,
+            _ => 0,
+        };
+
+        let dirs = &[
+            ((1_i8, 0_i8), S_DIR),
+            ((-1, 0), N_DIR),
+            ((0, 1), E_DIR),
+            ((0, -1), W_DIR),
+        ];
+
+        let iter = dirs.iter()
+            .filter(|&&((i, j), dir)| self.has_valid_size((i, j)))
+            .filter_map(|&((i, j), dir)| {
+                let i = (cur_i + i);
+                let j = (cur_j + j);
+                let tile = self.grid[i as usize][j as usize];
+                match tile {
+                    Tile::Unvisited { walls } => {
+                        if cur_walls & dir != 0 && shift_dir(walls, 2) & dir != 0 {
+                            Some((i, j))
+                        } else { 
+                            None
+                        }
+                    }
+                    Tile::End => Some((i, j)),
+                    _ => None,
+                }
+            });
+        Box::new(iter)
+    }
+
+    fn has_valid_size(&self, (i, j): (i8, i8)) -> bool {
+        let i_max = self.grid.len() as i8;
+        let j_max = self.grid[0].len() as i8;
+
+        0 <= i && i < i_max && 0 <= j && j < j_max
     }
 }
 
@@ -152,22 +204,21 @@ fn get_dir_char(delta: (i8, i8)) -> char {
     }
 }
 
-struct State {
-    current: (i8, i8),
-    prev: (i8, i8),
+struct Move {
+    to: (i8, i8),
+    from: Option<(i8, i8)>,
 }
 
 pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
     let field = Field::new(maze);
-//    VecDeque::from([State])
     dbg!(&field);
 
-
-    //TODO:
-    // [x] create data structure that contains tiles and references on previous directions
-    // [ ] move to every possible state -> do next turn
-    // [ ] move back from end tile to beginning
-
+    let init_move = Move {
+        to: field.begin,
+        from: None,
+    };
+    let mut moves_queue = VecDeque::from([init_move]);
+    while let Some(state) = moves_queue.pop_front() {}
+    // TODO: move back from end tile to beginning
     None
 }
-
