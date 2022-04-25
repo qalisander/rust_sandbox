@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod example_tests {
-    use crate::transforming_maze_solver::transforming_maze_solver_sol::maze_solver;
     use super::*;
+    use crate::transforming_maze_solver::transforming_maze_solver_sol::{maze_solver, Field};
+    use itertools::Itertools;
 
     #[test]
     fn example_tests() {
@@ -62,6 +63,24 @@ mod example_tests {
                 .map(|r| r.iter().map(|&s| String::from(s)).collect());
             test_helper::run_test(maze, maze_solver(maze), refsol)
         });
+    }
+
+    #[test]
+    fn get_next_points_test() {
+        let maze = vec![
+            vec![4, 2, 5, 4],
+            vec![4, 15, 11, 1],
+            vec![-1, 9, 6, 8],
+            vec![12, 7, 7, -2],
+        ];
+
+        let field = Field::new(&maze);
+        dbg!(&field);
+        
+        assert_eq!(
+            field.get_next_points((2, 1)).collect_vec(),
+            vec![(3, 1), (2, 0)]
+        )
     }
 }
 

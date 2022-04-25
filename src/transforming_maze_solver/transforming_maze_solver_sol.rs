@@ -1,6 +1,5 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
-use core::panicking::panic;
 use crate::sudoku::sudoku_my::seq_is_valid;
 use itertools::Itertools;
 use std::collections::vec_deque::VecDeque;
@@ -16,6 +15,7 @@ const N_DIR: DIR = 0b_1000;
 const BEGIN: DIR = -1;
 const END: DIR = -2;
 
+// TODO: better make tile as a struct and tile type
 #[derive(Debug, Copy, Clone)]
 enum Tile {
     Visited {
@@ -38,14 +38,14 @@ enum Tile {
 
 type Grid = Vec<Vec<Tile>>;
 
-struct Field {
+pub struct Field {
     grid: Grid,
     begin: (i8, i8),
     end: (i8, i8),
 }
 
 impl Field {
-    fn new(maze: &Vec<Vec<DIR>>) -> Self {
+    pub fn new(maze: &Vec<Vec<DIR>>) -> Self {
         let mut begin = None;
         let mut end = None;
         let mut process_dir = |dir, (i, j)| match dir {
@@ -91,8 +91,11 @@ impl Field {
         }
     }
 
-    fn get_next_points(&self, (cur_i, cur_j): (i8, i8)) -> Box<impl Iterator<Item = (i8, i8)>> {
-        if !self.has_valid_size((cur_i, cur_j)) {
+    pub(crate) fn get_next_points(
+        &self,
+        (cur_i, cur_j): (usize, usize),
+    ) -> Box<impl Iterator<Item = (usize, usize)> + '_> {
+        if !self.has_valid_size((cur_i as i8, cur_j as i8)) {
             panic!("Invalid size!");
         }
 
@@ -108,24 +111,25 @@ impl Field {
             ((0, -1), W_DIR),
         ];
 
-        let iter = dirs.iter()
-            .filter(|&&((i, j), dir)| self.has_valid_size((i, j)))
-            .filter_map(|&((i, j), dir)| {
-                let i = (cur_i + i);
-                let j = (cur_j + j);
-                let tile = self.grid[i as usize][j as usize];
-                match tile {
-                    Tile::Unvisited { walls } => {
-                        if cur_walls & dir != 0 && shift_dir(walls, 2) & dir != 0 {
-                            Some((i, j))
-                        } else { 
-                            None
-                        }
+        let iter = dirs.iter().filter_map(move |&((i, j), dir)| {
+            let (i, j) = (cur_i as i8 + i, cur_j as i8 + j);
+            if !self.has_valid_size((i, j)) {
+                return None;
+            }
+
+            let (i, j) = (i as usize, j as usize);
+            match self.grid[i][j] {
+                Tile::Unvisited { walls } => {
+                    if cur_walls & dir != 0 && shift_dir(walls, 2) & dir != 0 {
+                        Some((i, j))
+                    } else {
+                        None
                     }
-                    Tile::End => Some((i, j)),
-                    _ => None,
                 }
-            });
+                Tile::End => Some((i, j)),
+                _ => None,
+            }
+        });
         Box::new(iter)
     }
 
@@ -194,6 +198,7 @@ pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
     (shifted & DIR_MASK) | (shifted >> 4)
 }
 
+// TODO: use this fn when go back
 fn get_dir_char(delta: (i8, i8)) -> char {
     match delta {
         (i, _) if i < 0 => 'N',
