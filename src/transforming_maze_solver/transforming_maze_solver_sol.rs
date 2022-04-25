@@ -15,19 +15,22 @@ const N_DIR: DIR = 0b_1000;
 const BEGIN: DIR = -1;
 const END: DIR = -2;
 
-// TODO: better make tile as a struct and tile type
+//TODO: better make tile as a struct and tile type
 #[derive(Debug, Copy, Clone)]
-enum Tile {
+enum TType {
     Visited {
         prev_tile_delta: (i8, i8),
         is_prev_same_interval: bool,
-        walls: DIR,
     },
-    Unvisited {
-        walls: DIR,
-    },
+    Unvisited,
     Begin,
     End,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Tile {
+    t_type: TType,
+    walls: DIR,
 }
 
 //      |
@@ -38,26 +41,35 @@ enum Tile {
 
 type Grid = Vec<Vec<Tile>>;
 
-pub struct Field {
+struct Field {
     grid: Grid,
-    begin: (i8, i8),
-    end: (i8, i8),
+    begin: (usize, usize),
+    end: (usize, usize),
 }
 
 impl Field {
-    pub fn new(maze: &Vec<Vec<DIR>>) -> Self {
+    fn new(maze: &Vec<Vec<DIR>>) -> Self {
         let mut begin = None;
         let mut end = None;
         let mut process_dir = |dir, (i, j)| match dir {
             BEGIN => {
-                begin = Some((i as i8, j as i8));
-                Tile::Begin
+                begin = Some((i, j));
+                Tile {
+                    t_type: TType::Begin,
+                    walls: 0,
+                }
             }
             END => {
-                end = Some((i as i8, j as i8));
-                Tile::End
+                end = Some((i, j));
+                Tile {
+                    t_type: TType::End,
+                    walls: 0,
+                }
             }
-            dir if dir & DIR_MASK == dir => Tile::Unvisited { walls: dir },
+            dir if dir & DIR_MASK == dir => Tile {
+                t_type: TType::Unvisited,
+                walls: dir,
+            },
             dir => panic!("Invalid cell! value: {}; index: {:?}", dir, (i, j)),
         };
 
@@ -81,13 +93,7 @@ impl Field {
 
     fn rotate_walls(&mut self) {
         for tile in self.grid.iter_mut().flatten() {
-            match tile {
-                Tile::Visited { ref mut walls, .. } => {
-                    *walls = shift_dir(*walls, 1);
-                }
-                Tile::Unvisited { ref mut walls, .. } => *walls = shift_dir(*walls, 1),
-                _ => {}
-            }
+            tile.walls = shift_dir(tile.walls, 1);
         }
     }
 
@@ -99,10 +105,7 @@ impl Field {
             panic!("Invalid size!");
         }
 
-        let cur_walls = match self.grid[cur_i as usize][cur_j as usize] {
-            Tile::Visited { walls, .. } => walls,
-            _ => 0,
-        };
+        let cur_walls = self.grid[cur_i as usize][cur_j as usize].walls;
 
         let dirs = &[
             ((1_i8, 0_i8), S_DIR),
@@ -118,15 +121,16 @@ impl Field {
             }
 
             let (i, j) = (i as usize, j as usize);
-            match self.grid[i][j] {
-                Tile::Unvisited { walls } => {
-                    if cur_walls & dir != 0 && shift_dir(walls, 2) & dir != 0 {
+            let tile = self.grid[i][j];
+            match tile.t_type {
+                TType::Unvisited => {
+                    if cur_walls & dir == 0 && shift_dir(tile.walls, 2) & dir == 0 {
                         Some((i, j))
                     } else {
                         None
                     }
                 }
-                Tile::End => Some((i, j)),
+                TType::End => Some((i, j)),
                 _ => None,
             }
         });
@@ -151,15 +155,13 @@ impl Debug for Field {
             .iter()
             .map(|row| {
                 row.iter()
-                    .map(|tile| match *tile {
-                        Tile::Visited {
-                            walls,
-                            prev_tile_delta,
-                            ..
-                        } => format_walls(walls, get_dir_char(prev_tile_delta)),
-                        Tile::Unvisited { walls } => format_walls(walls, '·'),
-                        Tile::Begin => format_walls(0, 'B'),
-                        Tile::End => format_walls(0, 'X'),
+                    .map(|tile| match tile.t_type {
+                        TType::Visited {
+                            prev_tile_delta, ..
+                        } => format_walls(tile.walls, get_dir_char(prev_tile_delta)),
+                        TType::Unvisited => format_walls(tile.walls, '·'),
+                        TType::Begin => format_walls(0, 'B'),
+                        TType::End => format_walls(0, 'X'),
                     })
                     .collect_vec()
             })
@@ -210,8 +212,8 @@ fn get_dir_char(delta: (i8, i8)) -> char {
 }
 
 struct Move {
-    to: (i8, i8),
-    from: Option<(i8, i8)>,
+    to: (usize, usize),
+    from: Option<(usize, usize)>,
 }
 
 pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
@@ -226,4 +228,42 @@ pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
     while let Some(state) = moves_queue.pop_front() {}
     // TODO: move back from end tile to beginning
     None
+}
+
+mod test {
+    use super::*;
+
+    #[test]
+    fn get_next_points_test() {
+        let maze = vec![
+            vec![4, 2, 5, 4],
+            vec![4, 15, 11, 1],
+            vec![-1, 9, 6, 8],
+            vec![12, 7, 7, -2],
+        ];
+
+        let mut field = Field::new(&maze);
+        dbg!(&field);
+
+        let data = [
+            ((2_usize, 1_usize), vec![(3, 1)]),
+            ((0, 3), vec![(1, 3)]),
+            (field.begin, vec![(1, 0), (2, 1)])
+        ];
+
+        for ((i, j), next_points) in data.into_iter() {
+            field.grid[i][j].t_type = TType::Visited {
+                prev_tile_delta: (0, 0),
+                is_prev_same_interval: false,
+            };
+
+            assert_eq!(field.get_next_points((i, j)).collect_vec(), next_points);
+            field.grid[i][j].t_type = TType::Unvisited;
+        }
+    }
+
+    #[test]
+    fn shift_dir_test() {
+        assert_eq!(shift_dir(N_DIR, 2), S_DIR);
+    }
 }
