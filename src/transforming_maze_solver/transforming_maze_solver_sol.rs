@@ -1,6 +1,7 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
 use crate::sudoku::sudoku_my::seq_is_valid;
+use crate::transforming_maze_solver::transforming_maze_solver_sol::TType::Visited;
 use itertools::Itertools;
 use std::collections::vec_deque::VecDeque;
 use std::fmt::{Debug, Formatter};
@@ -15,12 +16,11 @@ const N_DIR: DIR = 0b_1000;
 const BEGIN: DIR = -1;
 const END: DIR = -2;
 
-//TODO: better make tile as a struct and tile type
 #[derive(Debug, Copy, Clone)]
 enum TType {
     Visited {
-        prev_tile_delta: (i8, i8),
-        is_prev_same_interval: bool,
+        prev_tile: (usize, usize),
+        interval_id: u32,
     },
     Unvisited,
     Begin,
@@ -101,21 +101,21 @@ impl Field {
         &self,
         (cur_i, cur_j): (usize, usize),
     ) -> Box<impl Iterator<Item = (usize, usize)> + '_> {
-        if !self.has_valid_size((cur_i as i8, cur_j as i8)) {
+        if !self.has_valid_size((cur_i as i32, cur_j as i32)) {
             panic!("Invalid size!");
         }
 
         let cur_walls = self.grid[cur_i as usize][cur_j as usize].walls;
 
         let dirs = &[
-            ((1_i8, 0_i8), S_DIR),
+            ((1, 0), S_DIR),
             ((-1, 0), N_DIR),
             ((0, 1), E_DIR),
             ((0, -1), W_DIR),
         ];
 
         let iter = dirs.iter().filter_map(move |&((i, j), dir)| {
-            let (i, j) = (cur_i as i8 + i, cur_j as i8 + j);
+            let (i, j) = (cur_i as i32 + i, cur_j as i32 + j);
             if !self.has_valid_size((i, j)) {
                 return None;
             }
@@ -137,9 +137,9 @@ impl Field {
         Box::new(iter)
     }
 
-    fn has_valid_size(&self, (i, j): (i8, i8)) -> bool {
-        let i_max = self.grid.len() as i8;
-        let j_max = self.grid[0].len() as i8;
+    fn has_valid_size(&self, (i, j): (i32, i32)) -> bool {
+        let i_max = self.grid.len() as i32;
+        let j_max = self.grid[0].len() as i32;
 
         0 <= i && i < i_max && 0 <= j && j < j_max
     }
@@ -153,12 +153,15 @@ impl Debug for Field {
         let grid = self
             .grid
             .iter()
-            .map(|row| {
+            .enumerate()
+            .map(|(i, row)| {
                 row.iter()
-                    .map(|tile| match tile.t_type {
+                    .enumerate()
+                    .map(|(j, tile)| match tile.t_type {
                         TType::Visited {
-                            prev_tile_delta, ..
-                        } => format_walls(tile.walls, get_dir_char(prev_tile_delta)),
+                            prev_tile: from_tile,
+                            ..
+                        } => format_walls(tile.walls, get_dir_char(from_tile, (i, j))),
                         TType::Unvisited => format_walls(tile.walls, '·'),
                         TType::Begin => format_walls(0, 'B'),
                         TType::End => format_walls(0, 'X'),
@@ -200,14 +203,13 @@ pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
     (shifted & DIR_MASK) | (shifted >> 4)
 }
 
-// TODO: use this fn when go back
-fn get_dir_char(delta: (i8, i8)) -> char {
-    match delta {
+fn get_dir_char(from: (usize, usize), to: (usize, usize)) -> char {
+    match (to.0 as i32 - from.0 as i32, to.1 as i32 - from.1 as i32) {
         (i, _) if i < 0 => 'N',
         (i, _) if i > 0 => 'S',
         (_, j) if j < 0 => 'E',
         (_, j) if j < 0 => 'W',
-        _ => panic!("Invalid delta: {:?}", delta),
+        (i, j) => panic!("Invalid delta: {:?}", (i, j)),
     }
 }
 
@@ -217,15 +219,32 @@ struct Move {
 }
 
 pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
-    let field = Field::new(maze);
+    let mut field = Field::new(maze);
     dbg!(&field);
 
-    let init_move = Move {
-        to: field.begin,
-        from: None,
-    };
-    let mut moves_queue = VecDeque::from([init_move]);
-    while let Some(state) = moves_queue.pop_front() {}
+    let mut points_to_visit = vec![field.begin];
+    let mut current_point_id = 0;
+    'outer: for interval_id in 0.. {
+        
+        while let Some(&(i, j)) = points_to_visit.get(current_point_id) {
+            if let TType::End = field.grid[i][j].t_type { 
+                break 'outer;
+            }
+            
+            let next_points = field.get_next_points((i, j)).collect_vec();
+            for (next_i, next_j) in next_points {
+                points_to_visit.push((next_i, next_j));
+                field.grid[next_i][next_j].t_type = TType::Visited {
+                    interval_id,
+                    prev_tile: (i, j),
+                };
+            }
+
+            current_point_id += 1;
+        }
+        
+        field.rotate_walls();
+    }
     // TODO: move back from end tile to beginning
     None
 }
@@ -248,13 +267,13 @@ mod test {
         let data = [
             ((2_usize, 1_usize), vec![(3, 1)]),
             ((0, 3), vec![(1, 3)]),
-            (field.begin, vec![(1, 0), (2, 1)])
+            (field.begin, vec![(1, 0), (2, 1)]),
         ];
 
         for ((i, j), next_points) in data.into_iter() {
             field.grid[i][j].t_type = TType::Visited {
-                prev_tile_delta: (0, 0),
-                is_prev_same_interval: false,
+                prev_tile: (0, 0),
+                interval_id: 0,
             };
 
             assert_eq!(field.get_next_points((i, j)).collect_vec(), next_points);
