@@ -1,10 +1,8 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
-use crate::sudoku::sudoku_my::seq_is_valid;
-use crate::transforming_maze_solver::transforming_maze_solver_sol::TType::Visited;
 use itertools::Itertools;
-use std::collections::vec_deque::VecDeque;
 use std::fmt::{Debug, Formatter};
+use std::iter;
 
 type DIR = i8;
 
@@ -20,7 +18,7 @@ const END: DIR = -2;
 enum TType {
     Visited {
         prev_tile: (usize, usize),
-        interval_id: u32,
+        interval_id: usize,
     },
     Unvisited,
     Begin,
@@ -121,6 +119,7 @@ impl Field {
             }
 
             let (i, j) = (i as usize, j as usize);
+            // TODO: it's possible to give reference to tile
             let tile = self.grid[i][j];
             match tile.t_type {
                 TType::Unvisited => {
@@ -137,11 +136,16 @@ impl Field {
         Box::new(iter)
     }
 
+    //TODO: maybe create method get tile by i, j
     fn has_valid_size(&self, (i, j): (i32, i32)) -> bool {
         let i_max = self.grid.len() as i32;
         let j_max = self.grid[0].len() as i32;
 
         0 <= i && i < i_max && 0 <= j && j < j_max
+    }
+
+    fn tile(&mut self, tile_id: (usize, usize)) -> Tile {
+        self.grid[tile_id.0][tile_id.1]
     }
 }
 
@@ -205,48 +209,88 @@ pub fn shift_dir(dir: DIR, shift: i8) -> DIR {
 
 fn get_dir_char(from: (usize, usize), to: (usize, usize)) -> char {
     match (to.0 as i32 - from.0 as i32, to.1 as i32 - from.1 as i32) {
-        (i, _) if i < 0 => 'N',
-        (i, _) if i > 0 => 'S',
-        (_, j) if j < 0 => 'E',
-        (_, j) if j < 0 => 'W',
+        (-1, 0) => 'N',
+        (1, 0) => 'S',
+        (0, 1) => 'E',
+        (0, -1) => 'W',
         (i, j) => panic!("Invalid delta: {:?}", (i, j)),
     }
-}
-
-struct Move {
-    to: (usize, usize),
-    from: Option<(usize, usize)>,
 }
 
 pub fn maze_solver(maze: &Vec<Vec<DIR>>) -> Option<Vec<String>> {
     let mut field = Field::new(maze);
     dbg!(&field);
 
+    // TODO: create method in field struct
+    let mut stop_counter = 4;
     let mut points_to_visit = vec![field.begin];
-    let mut current_point_id = 0;
     'outer: for interval_id in 0.. {
-        
-        while let Some(&(i, j)) = points_to_visit.get(current_point_id) {
-            if let TType::End = field.grid[i][j].t_type { 
-                break 'outer;
-            }
-            
-            let next_points = field.get_next_points((i, j)).collect_vec();
-            for (next_i, next_j) in next_points {
-                points_to_visit.push((next_i, next_j));
-                field.grid[next_i][next_j].t_type = TType::Visited {
-                    interval_id,
-                    prev_tile: (i, j),
-                };
-            }
+        let prev_points_len = points_to_visit.len();
+        for point_id in 0.. {
+            if let Some(&(i, j)) = points_to_visit.get(point_id) {
+                if (i, j) == field.end {
+                    // t_type of end tile will be Visited, not End
+                    break 'outer;
+                }
 
-            current_point_id += 1;
+                let next_points = field.get_next_points((i, j)).collect_vec();
+                for (next_i, next_j) in next_points {
+                    points_to_visit.push((next_i, next_j));
+                    field.grid[next_i][next_j].t_type = TType::Visited {
+                        interval_id,
+                        prev_tile: (i, j),
+                    };
+                }
+            } else {
+                break;
+            }
         }
-        
+
+        if prev_points_len == points_to_visit.len() {
+            stop_counter -= 1;
+            if stop_counter == 0 {
+                return None;
+            }
+        }
+
         field.rotate_walls();
     }
-    // TODO: move back from end tile to beginning
-    None
+
+    // TODO: create method in field struct move back from end tile to beginning
+    let mut tile_id = field.end;
+    let mut reversed_ans: Vec<String> = vec![];
+    let mut next_interval_id: Option<usize> = None;
+    while let TType::Visited {
+        prev_tile: prev_tile_id,
+        interval_id,
+    } = field.tile(tile_id).t_type
+    {
+        let char = get_dir_char(prev_tile_id, tile_id);
+        match next_interval_id {
+            None | Some(1) => reversed_ans.push(char.to_string()),
+            Some(next_interval_id) => match next_interval_id - interval_id {
+                0 => reversed_ans.last_mut().unwrap().push(char),
+                delta => reversed_ans.extend(
+                    iter::repeat("".to_string())
+                        .take(delta - 1)
+                        .chain([char.to_string()].into_iter()),
+                ),
+            },
+        };
+        
+        next_interval_id.replace(interval_id);
+        tile_id = prev_tile_id;
+    }
+
+    Some(reverse_ans(reversed_ans))
+}
+
+fn reverse_ans(reversed_ans: Vec<String>) -> Vec<String> {
+    reversed_ans
+        .iter()
+        .map(|string| string.chars().rev().collect::<String>())
+        .rev()
+        .collect_vec()
 }
 
 mod test {
