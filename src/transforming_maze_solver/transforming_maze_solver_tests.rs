@@ -1,61 +1,61 @@
 #[cfg(test)]
 mod example_tests {
     use super::*;
-    use crate::transforming_maze_solver::transforming_maze_solver_sol::{maze_solver};
+    use crate::transforming_maze_solver::transforming_maze_solver_sol::maze_solver;
     use itertools::Itertools;
 
     #[test]
     fn example_tests() {
         let example_tests = vec![
-            (
-                vec![
-                    vec![4, 2, 5, 4],
-                    vec![4, 15, 11, 1],
-                    vec![-1, 9, 6, 8],
-                    vec![12, 7, 7, -2],
-                ],
-                Some(vec!["NNE", "EE", "S", "SS"]),
-            ),
-            (
-                vec![
-                    vec![6, 3, 10, 4, 11],
-                    vec![8, 10, 4, 8, 5],
-                    vec![-1, 14, 11, 3, -2],
-                    vec![15, 3, 4, 14, 15],
-                    vec![14, 7, 15, 5, 5],
-                ],
-                Some(vec!["", "", "E", "", "E", "NESE"]),
-            ),
-            (
-                vec![
-                    vec![9, 1, 9, 0, 13, 0],
-                    vec![14, 1, 11, 2, 11, 4],
-                    vec![-1, 2, 11, 0, 0, 15],
-                    vec![4, 3, 9, 6, 3, -2],
-                ],
-                Some(vec!["E", "SE", "", "E", "E", "E"]),
-            ),
-            (
-                vec![
-                    vec![-1, 6, 12, 15, 11],
-                    vec![8, 7, 15, 7, 10],
-                    vec![13, 7, 13, 15, -2],
-                    vec![11, 10, 8, 1, 3],
-                    vec![12, 6, 9, 14, 7],
-                ],
-                None,
-            ),
-            (
-                vec![
-                    vec![6, 3, 0, 9, 14, 13, 14],
-                    vec![-1, 14, 9, 11, 15, 14, 15],
-                    vec![2, 15, 0, 12, 6, 15, -2],
-                    vec![4, 10, 7, 6, 15, 5, 3],
-                    vec![7, 3, 13, 13, 14, 7, 0],
-                ],
-                None,
-            ),
-        ];
+                (
+                    vec![
+                        vec![4, 2, 5, 4],
+                        vec![4, 15, 11, 1],
+                        vec![-1, 9, 6, 8],
+                        vec![12, 7, 7, -2],
+                    ],
+                    Some(vec!["NNE", "EE", "S", "SS"]),
+                ),
+                (
+                    vec![
+                        vec![6, 3, 10, 4, 11],
+                        vec![8, 10, 4, 8, 5],
+                        vec![-1, 14, 11, 3, -2],
+                        vec![15, 3, 4, 14, 15],
+                        vec![14, 7, 15, 5, 5],
+                    ],
+                    Some(vec!["", "", "E", "", "E", "NESE"]),
+                ),
+                (
+                    vec![
+                        vec![9, 1, 9, 0, 13, 0],
+                        vec![14, 1, 11, 2, 11, 4],
+                        vec![-1, 2, 11, 0, 0, 15],
+                        vec![4, 3, 9, 6, 3, -2],
+                    ],
+                    Some(vec!["E", "SE", "", "E", "E", "E"]),
+                ),
+                (
+                    vec![
+                        vec![-1, 6, 12, 15, 11],
+                        vec![8, 7, 15, 7, 10],
+                        vec![13, 7, 13, 15, -2],
+                        vec![11, 10, 8, 1, 3],
+                        vec![12, 6, 9, 14, 7],
+                    ],
+                    None,
+                ),
+                (
+                    vec![
+                        vec![4, 14, 14, 11, 4, -2],
+                        vec![13, 1, 12, 1, 12, 13],
+                        vec![14, 13, 1, 1, 0, 10],
+                        vec![-1, 13, 2, 5, 13, 12],
+                        vec![5, 2, 6, 1, 11, 10],
+                    ],
+                    Some(vec!["", "E", "", "ENEE", "N", "", "N", "E"]),
+                ),
+            ];
 
         example_tests.iter().for_each(|(maze, sol)| {
             let refsol = sol

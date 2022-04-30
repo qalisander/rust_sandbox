@@ -1,2 +1,2 @@
-mod transforming_maze_solver_sol;
+pub mod transforming_maze_solver_sol;
 mod transforming_maze_solver_tests;
