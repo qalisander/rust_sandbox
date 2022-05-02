@@ -1,6 +1,7 @@
 // https://www.codewars.com/kata/5b86a6d7a4dcc13cd900000b/train/rust
 
 use itertools::Itertools;
+use num::cast::AsPrimitive;
 use std::fmt::{Debug, Formatter};
 use std::iter;
 use std::time::Instant;
@@ -18,8 +19,8 @@ const END: DIR = -2;
 #[derive(Debug, Copy, Clone)]
 enum TType {
     Visited {
-        prev_tile_id: (usize, usize),
-        interval_id: usize,
+        prev_tile_id: (i32, i32),
+        interval_id: u32,
     },
     Unvisited,
     Begin,
@@ -42,8 +43,8 @@ type Grid = Vec<Vec<Tile>>;
 
 struct Field {
     grid: Grid,
-    begin: (usize, usize),
-    end: (usize, usize),
+    begin: (i32, i32),
+    end: (i32, i32),
 }
 
 impl Field {
@@ -52,14 +53,14 @@ impl Field {
         let mut end = None;
         let mut process_dir = |dir, (i, j)| match dir {
             BEGIN => {
-                begin = Some((i, j));
+                begin = Some((i as i32, j as i32));
                 Tile {
                     t_type: TType::Begin,
                     walls: 0,
                 }
             }
             END => {
-                end = Some((i, j));
+                end = Some((i as i32, j as i32));
                 Tile {
                     t_type: TType::End,
                     walls: 0,
@@ -98,13 +99,9 @@ impl Field {
 
     pub(crate) fn get_next_points(
         &self,
-        (cur_i, cur_j): (usize, usize),
-    ) -> Box<impl Iterator<Item = (usize, usize)> + '_> {
-        if !self.has_valid_size((cur_i as i32, cur_j as i32)) {
-            panic!("Invalid size!");
-        }
-
-        let cur_walls = self.grid[cur_i as usize][cur_j as usize].walls;
+        (i, j): (i32, i32),
+    ) -> Box<impl Iterator<Item = (i32, i32)> + '_> {
+        let cur_walls = self.tile((i, j)).expect("Invalid size!").walls;
 
         let dirs = &[
             ((1, 0), S_DIR),
@@ -113,41 +110,48 @@ impl Field {
             ((0, -1), W_DIR),
         ];
 
-        let iter = dirs.iter().filter_map(move |&((i, j), dir)| {
-            let (i, j) = (cur_i as i32 + i, cur_j as i32 + j);
-            if !self.has_valid_size((i, j)) {
-                return None;
-            }
-
-            let tile_id = (i as usize, j as usize);
-            let option = match self.tile(tile_id).t_type {
-                _ if cur_walls & dir != 0 || shift_dir(self.tile(tile_id).walls, 2) & dir != 0 => {
-                    None
-                }
+        let iter = dirs.iter().filter_map(move |&((di, dj), dir)| {
+            let tile_id = (i + di, j + dj);
+            let tile = self.tile(tile_id)?;
+            match tile.t_type {
+                _ if cur_walls & dir != 0 || shift_dir(tile.walls, 2) & dir != 0 => None,
                 TType::Unvisited | TType::End => Some(tile_id),
                 _ => None,
-            };
-            option
+            }
         });
         Box::new(iter)
     }
 
-    //TODO: maybe create method get tile by i, j, and use generics as parameter
-    fn has_valid_size(&self, (i, j): (i32, i32)) -> bool {
-        let i_max = self.grid.len() as i32;
-        let j_max = self.grid[0].len() as i32;
-
-        0 <= i && i < i_max && 0 <= j && j < j_max
+    fn tile<T>(&self, (i, j): (T, T)) -> Option<&Tile>
+        where
+            T: PartialOrd + AsPrimitive<usize> + Default {
+        if self.has_valid_size((i, j)) {
+            Some(&self.grid[i.as_()][j.as_()])
+        } else {
+            None
+        }
     }
 
-    fn tile(&self, tile_id: (usize, usize)) -> Tile {
-        self.grid[tile_id.0][tile_id.1]
+    fn tile_mut<T>(&mut self, (i, j): (T, T)) -> Option<&mut Tile>
+        where
+            T: PartialOrd + AsPrimitive<usize> + Default {
+        if self.has_valid_size((i, j)) {
+            Some(&mut self.grid[i.as_()][j.as_()])
+        } else {
+            None
+        }
     }
 
-    fn tile_mut(&mut self, tile_id: (usize, usize)) -> Tile {
-        self.grid[tile_id.0][tile_id.1]
+    fn has_valid_size<T>(&self, (i, j): (T, T)) -> bool
+    where
+        T: PartialOrd + AsPrimitive<usize> + Default 
+    {
+        !(i < T::default()
+            || j < T::default()
+            || self.grid.get(i.as_()).is_none()
+            || self.grid[0].get(j.as_()).is_none())
     }
-    
+
     fn try_solve(&mut self) -> bool {
         let instant = Instant::now();
         let mut points_to_visit = vec![self.begin];
@@ -162,7 +166,7 @@ impl Field {
                     let next_points = self.get_next_points((i, j)).collect_vec();
                     for (next_i, next_j) in next_points {
                         points_to_visit.push((next_i, next_j));
-                        self.grid[next_i][next_j].t_type = TType::Visited {
+                        self.tile_mut((next_i, next_j)).unwrap().t_type = TType::Visited {
                             interval_id,
                             prev_tile_id: (i, j),
                         };
@@ -172,7 +176,7 @@ impl Field {
                 }
             }
 
-            if instant.elapsed().as_millis() >= 5{
+            if instant.elapsed().as_millis() >= 5 {
                 return false;
             }
 
@@ -180,13 +184,13 @@ impl Field {
         }
         true
     }
-    
-    fn get_ans(&self) -> Vec<String>{
+
+    fn get_ans(&self) -> Vec<String> {
         let mut tile_id = self.end;
-        let mut next_interval_id: Option<usize> = None;
+        let mut next_interval_id: Option<u32> = None;
         let mut reversed_ans: Vec<String> = vec![];
         loop {
-            match self.tile(tile_id).t_type {
+            match self.tile(tile_id).unwrap().t_type {
                 TType::Visited {
                     prev_tile_id,
                     interval_id,
@@ -214,8 +218,8 @@ impl Field {
                 _ => panic!("Invalid route!"),
             }
 
-            fn add_spaces(vec: &mut Vec<String>, count: usize) {
-                vec.extend(iter::repeat("".to_string()).take(count));
+            fn add_spaces(vec: &mut Vec<String>, count: u32) {
+                vec.extend(iter::repeat("".to_string()).take(count as usize));
             }
         }
         return reverse_ans(reversed_ans);
@@ -242,14 +246,20 @@ impl Debug for Field {
             .map(|(i, row)| {
                 row.iter()
                     .enumerate()
-                    .map(|(j, tile)| match tile.t_type {
-                        TType::Visited {
-                            prev_tile_id: from_tile,
-                            ..
-                        } => format_walls(tile.walls, get_dir_char(from_tile, (i, j))),
-                        TType::Unvisited => format_walls(tile.walls, '·'),
-                        TType::Begin => format_walls(0, 'B'),
-                        TType::End => format_walls(0, 'X'),
+                    .map(|(j, tile)| {
+                        match tile.t_type {
+                            TType::Visited {
+                                prev_tile_id: from_tile,
+                                ..
+                            } => {
+                                let (i, j) = (i as i32, j as i32);
+                                let dir_char = get_dir_char(from_tile, (i, j));
+                                format_walls(tile.walls, dir_char)
+                            }
+                            TType::Unvisited => format_walls(tile.walls, '·'),
+                            TType::Begin => format_walls(0, 'B'),
+                            TType::End => format_walls(0, 'X'),
+                        }
                     })
                     .collect_vec()
             })
@@ -288,8 +298,8 @@ fn shift_dir(dir: DIR, shift: i8) -> DIR {
     (shifted & DIR_MASK) | (shifted >> 4)
 }
 
-fn get_dir_char(from: (usize, usize), to: (usize, usize)) -> char {
-    match (to.0 as i32 - from.0 as i32, to.1 as i32 - from.1 as i32) {
+fn get_dir_char(from: (i32, i32), to: (i32, i32)) -> char {
+    match (to.0 - from.0, to.1 - from.1) {
         (-1, 0) => 'N',
         (1, 0) => 'S',
         (0, 1) => 'E',
@@ -323,20 +333,20 @@ mod test {
         dbg!(&field);
 
         let data = [
-            ((2_usize, 1_usize), vec![(3, 1)]),
+            ((2, 1), vec![(3, 1)]),
             ((0, 3), vec![(1, 3)]),
             (field.begin, vec![(1, 0), (2, 1)]),
             ((2, 2), vec![(2, 3)]),
         ];
 
-        for ((i, j), next_points) in data.into_iter() {
-            field.grid[i][j].t_type = TType::Visited {
+        for (point, next_points) in data.into_iter() {
+            field.tile_mut(point).unwrap().t_type = TType::Visited {
                 prev_tile_id: (0, 0),
                 interval_id: 0,
             };
 
-            assert_eq!(field.get_next_points((i, j)).collect_vec(), next_points);
-            field.grid[i][j].t_type = TType::Unvisited;
+            assert_eq!(field.get_next_points(point).collect_vec(), next_points);
+            field.tile_mut(point).unwrap().t_type = TType::Unvisited;
         }
     }
 
