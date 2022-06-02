@@ -47,12 +47,8 @@ impl VecExt for Vec<i32>{
         self.iter().map(|f| *f as f64 / (self.len() as f64)).sum()
     }
     
-    fn median(&self) -> f64 {
-        if self.len() % 2 == 0 {
-            (self[self.len() / 2 - 1] as f64 + self[self.len() / 2] as f64) / 2_f64
-        } else {
-            self[self.len() / 2] as f64
-        }
+    fn median(&self) -> f64 { 
+        (self[(self.len() - 1) / 2] as f64 + self[self.len() / 2] as f64) / 2_f64
     }
 }
 
