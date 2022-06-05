@@ -1,11 +1,11 @@
 // https://www.codewars.com/kata/5a2a597a8882f392020005e5/train/rust
 
+use crate::blox_solver::blox_solver_sol::Orientation::{Horizontal, Upright, Vertical};
 use itertools::Itertools;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Deref;
 use std::rc::{Rc, Weak};
-use crate::blox_solver::blox_solver_sol::Orientation::{Horizontal, Upright, Vertical};
 
 type Grid = Vec<Vec<Rc<Tile>>>;
 
@@ -23,6 +23,13 @@ struct Field {
     grid: HashMap<Orientation, Grid>,
     begin: (usize, usize),
     end: (usize, usize),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+enum Orientation {
+    Upright,
+    Vertical,
+    Horizontal,
 }
 
 impl Debug for Field {
@@ -68,6 +75,7 @@ impl Field {
         let i_max = grid.len() as isize;
         let j_max = grid[0].len() as isize;
 
+        grid.
         let (i, j) = state.index;
         if i < 0 || i >= i_max || j < 0 || j >= j_max {
             return false;
@@ -105,9 +113,9 @@ impl Field {
         upright_field[end.0][end.1] = Rc::new(Tile::End);
 
         let grid = HashMap::from([
-            (Orientation::Upright, upright_field),
-            (Orientation::Horizontal, horizontal_field),
-            (Orientation::Vertical, vertical_field),
+            (Upright, upright_field),
+            (Horizontal, horizontal_field),
+            (Vertical, vertical_field),
         ]);
 
         return Field {
@@ -158,49 +166,42 @@ impl State {
 
     fn get_dirs(&self) -> impl Iterator<Item = (Orientation, (isize, isize), char)> {
         match &self.orientation {
-            Orientation::Upright => [
-                (Orientation::Horizontal, (0, 1), 'R'),
-                (Orientation::Horizontal, (0, -2), 'L'),
-                (Orientation::Vertical, (1, 0), 'D'),
-                (Orientation::Vertical, (-2, 0), 'U'),
+            Upright => [
+                (Horizontal, (0, 1), 'R'),
+                (Horizontal, (0, -2), 'L'),
+                (Vertical, (1, 0), 'D'),
+                (Vertical, (-2, 0), 'U'),
             ],
-            Orientation::Vertical => [
-                (Orientation::Vertical, (0, 1), 'R'),
-                (Orientation::Vertical, (0, -1), 'L'),
-                (Orientation::Upright, (2, 0), 'D'),
-                (Orientation::Upright, (-1, 0), 'U'),
+            Vertical => [
+                (Vertical, (0, 1), 'R'),
+                (Vertical, (0, -1), 'L'),
+                (Upright, (2, 0), 'D'),
+                (Upright, (-1, 0), 'U'),
             ],
-            Orientation::Horizontal => [
-                (Orientation::Upright, (0, 2), 'R'),
-                (Orientation::Upright, (0, -1), 'L'),
-                (Orientation::Horizontal, (1, 0), 'D'),
-                (Orientation::Horizontal, (-1, 0), 'U'),
+            Horizontal => [
+                (Upright, (0, 2), 'R'),
+                (Upright, (0, -1), 'L'),
+                (Horizontal, (1, 0), 'D'),
+                (Horizontal, (-1, 0), 'U'),
             ],
         }
         .into_iter()
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-enum Orientation {
-    Upright,
-    Vertical,
-    Horizontal,
-}
-
 pub fn blox_solver(puzzle: &[&str]) -> String {
     let mut field = Field::new(puzzle);
     let begin_state = State {
         index: (field.begin.0 as isize, field.begin.1 as isize),
-        orientation: Orientation::Upright,
+        orientation: Upright,
         ch: '*',
     };
 
     let mut deque = VecDeque::from([begin_state]);
 
     while let Some(popped_state) = deque.pop_front() {
-//        dbg!(&field);
-//        dbg!(&deque);
+        //        dbg!(&field);
+        //        dbg!(&deque);
 
         let new_states = popped_state
             .get_dirs()
@@ -315,5 +316,3 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
 //        unreachable!()
 //    }
 //}
-
-
