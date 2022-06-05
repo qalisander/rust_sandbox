@@ -1,6 +1,6 @@
 // https://www.codewars.com/kata/5985ea20695be6079e000003/train/rust
 use itertools::Itertools;
-use num::{Complex, ToPrimitive};
+use num::{Complex, Integer, ToPrimitive};
 use rand::prelude::*;
 use std::collections::{HashSet, VecDeque};
 use std::fmt::{Debug, Display, Formatter};
@@ -271,7 +271,7 @@ pub fn solve_n_queens(n: usize, mandatory_queen: (usize, usize)) -> Option<Strin
     Some(format!("{0}", chessboard))
 }
 
-fn unique_random<T: Step + Ord>(range: Range<T>) -> impl Iterator<Item = T> {
+fn unique_random<T: Integer + Step>(range: Range<T>) -> impl Iterator<Item = T> {
     let mut rng = thread_rng();
     range
         .map(|index| (rng.gen::<usize>(), index))
