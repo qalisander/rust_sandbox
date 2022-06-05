@@ -75,7 +75,6 @@ impl Field {
         let i_max = grid.len() as isize;
         let j_max = grid[0].len() as isize;
 
-        grid.
         let (i, j) = state.index;
         if i < 0 || i >= i_max || j < 0 || j >= j_max {
             return false;
