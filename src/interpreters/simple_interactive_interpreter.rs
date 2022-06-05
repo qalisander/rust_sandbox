@@ -223,17 +223,17 @@ impl<'a,T> Parser<'a, T>
     fn parse(&mut self) -> Result<Stmt, String> {
         let expr = self.stmt();
         return match self.tokens.next() {
-            Some(token) => Err(format!("{0} {1:?}", INVALID_TOKEN, token)),
+            Some(token) => Err(format!("{INVALID_TOKEN} {token:?}")),
             None => expr,
         };
     }
 
     fn stmt(&mut self) -> Result<Stmt, String> {
-        let token = self.tokens.peek().ok_or(INVALID_END.to_string())?.clone();
+        let token = self.tokens.peek().ok_or_else(|| INVALID_END.to_string())?.clone();
         match &token.t_type {
             TType::Fn => {
                 self.tokens.next();
-                match self.tokens.next().ok_or(INVALID_END.to_string())? {
+                match self.tokens.next().ok_or_else(|| INVALID_END.to_string())? {
                     Token { t_type: TType::Identifier(identifier), .. } => {
                         let params = iter::from_fn(||{
                             match self.tokens.next_if(|tkn| matches!(tkn.t_type, TType::Identifier(_)))?.t_type {
