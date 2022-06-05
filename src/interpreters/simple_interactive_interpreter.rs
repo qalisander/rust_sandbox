@@ -110,7 +110,7 @@ impl Interpreter {
     // NOTE: no recursion implementation looks pretty:)
     fn check_fn_body(&mut self, fn_body: &FnBody) -> Result<(), String> {
         if fn_body.params.iter().duplicates().count() > 0 {
-            return Err(format!("ERROR: Duplicates in function: {:?}", {fn_body}));
+            return Err(format!("ERROR: Duplicates in function:\n{fn_body:?}"));
         }
 
         let param_not_exist = |identifier: &String| {
@@ -126,7 +126,7 @@ impl Interpreter {
                     Expr::Grouping(expr) => stack.push(expr),
                     Expr::Fn {args, ..} => stack.extend(args.iter()),
                     Expr::Var(identifier) if param_not_exist(identifier) =>
-                        break Err(format!("ERROR: Invalid identifier '{0}' in function body", {identifier})),
+                        break Err(format!("ERROR: Invalid identifier '{identifier}' in function body")),
                     _ => (),
                 },
                 None => break Ok(()),
@@ -141,14 +141,14 @@ impl Interpreter {
                     Expr::Var(identifier) => {
                         let val = self.eval(right)?;
                         if self.funcs.contains_key(identifier) {
-                            Err(format!("ERROR: Name '{0}' already exist", {identifier}))
+                            Err(format!("ERROR: Name '{identifier}' already exist"))
                         }
                         else {
                             self.vars.insert(identifier.clone(), vec![val]);
                             Ok(val)
                         }
                     },
-                    _ => Err(format!("ERROR: Invalid assigment! {:?}", expr))
+                    _ => Err(format!("ERROR: Invalid assigment!\n {expr:?}"))
                 }
             },
             Expr::Binary(left, ch, right) => match ch {
@@ -157,7 +157,7 @@ impl Interpreter {
                 '/' => Ok(self.eval(left)? / self.eval(right)?),
                 '*' => Ok(self.eval(left)? * self.eval(right)?),
                 '%' => Ok(self.eval(left)? % self.eval(right)?),
-                op => Err(format!("ERROR: Invalid operation! op:{:?}", op)),
+                op => Err(format!("ERROR: Invalid operation! op:{op:?}")),
             },
             Expr::Unary(ch, expr) => Ok(-self.eval(expr)?),
             Expr::Grouping(expr) => self.eval(expr),
@@ -166,21 +166,21 @@ impl Interpreter {
                 .map(|val| val.last())
                 .flatten()
                 .cloned()
-                .ok_or(format!("ERROR: Invalid variable identifier '{0}'", fn_identifier)),
+                .ok_or(format!("ERROR: Invalid variable identifier '{fn_identifier:?}'")),
             Expr::Fn {args: expr_args, identifier} => {
                 let args: Vec<_> = expr_args.iter()
                     .map(|arg| self.eval(arg))
                     .try_collect()?;
 
                 let func_body = self.funcs.get(identifier)
-                    .ok_or(format!("ERROR: Invalid function identifier '{0}'", identifier))?;
+                    .ok_or(format!("ERROR: Invalid function identifier '{identifier}'"))?;
 
                 let vars: Vec<_> = func_body.params.iter()
                     .zip_longest(args)
                     .map(|arg| {
                         match &arg {
                             &EitherOrBoth::Both(param, arg) => Ok((param, arg)),
-                            _ => Err(format!("ERROR: Invalid function '{0}' params", identifier)),
+                            _ => Err(format!("ERROR: Invalid function '{identifier}' params")),
                         }
                 }).try_collect()?;
 
@@ -244,14 +244,14 @@ impl<'a,T> Parser<'a, T>
 
                         match self.tokens.next().ok_or(INVALID_END.to_string())?.t_type {
                             TType::FnArrow => (),
-                            token => return Err(format!("{0} {1:?}", INVALID_TOKEN, token)),
+                            token => return Err(format!("{INVALID_TOKEN} {token:?}")),
                         };
 
                         let callee = Box::new(self.expression()?);
                         let body = FnBody { params, callee };
                         Ok(Stmt::FnDeclaration { identifier, body })
                     }
-                    token => Err(format!("{0} {1:?}", INVALID_TOKEN, token))
+                    token => Err(format!("{INVALID_TOKEN} {token:?}"))
                 }
             },
             _ => Ok(self.expression()?.into()),
@@ -352,7 +352,7 @@ impl<'a,T> Parser<'a, T>
                     None => Err(INVALID_PAREN.to_string()),
                 }
             }
-            _ => Err(format!("{0} {1:?}", INVALID_TOKEN, token)),
+            _ => Err(format!("{INVALID_TOKEN} {token:?}")),
         }
     }
 }
@@ -400,7 +400,7 @@ fn scan(input: &str) -> impl Iterator<Item=Token> + Clone + '_{
 
                         Token {index, len, t_type}
                     },
-                    _ => panic!("{0} index:{1}, char:{2}",INVALID_TOKEN, index, ch), // TODO: Use errors
+                    _ => panic!("{INVALID_TOKEN} index:{index}, char:{ch}"), // TODO: Use errors
                 };
                 Some(token)
             }

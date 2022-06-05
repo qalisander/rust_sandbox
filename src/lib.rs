@@ -1,8 +1,7 @@
-#![feature(test)]
-#![feature(slice_pattern)]
-#![feature(format_args_capture)]
-#![feature(type_alias_impl_trait)]
 #![feature(step_trait)]
+#![feature(test)]
+//#![feature(slice_pattern)]
+//#![feature(type_alias_impl_trait)]
 //#![feature(box_patterns)]
 //#![feature(hash_set_entry)]
 //#![feature(in_band_lifetimes)]
@@ -26,3 +25,4 @@ mod blox_solver;
 mod street_fighter;
 pub mod transforming_maze_solver;
 mod weight_for_weight;
+mod closest_pair_of_points_in_linearithmic_time;
