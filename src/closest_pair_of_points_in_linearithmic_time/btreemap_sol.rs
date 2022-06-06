@@ -2,39 +2,26 @@
 use itertools::Itertools;
 use num::{Complex, Float};
 use std::cmp::Ordering;
-//use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Debug;
-use std::ops::Bound::Included;
-use skiplist::{OrderedSkipList, SkipList, SkipMap};
+use std::ops::{Add, AddAssign};
 
-#[derive(Debug)]
-struct OrdFloatContainer<K: Float, V: Debug>(K, V);
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+struct OrdFloat<T: Float>(T);
 
-impl<K: Float, V: Debug> PartialEq for OrdFloatContainer<K, V> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl<K: Float, V: Debug> PartialOrd for OrdFloatContainer<K, V> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
-}
-
-impl<T: Float, V: Debug> Eq for OrdFloatContainer<T, V> {}
+impl<T: Float> Eq for OrdFloat<T> {}
 
 #[allow(clippy::derive_ord_xor_partial_ord)]
-impl<T: Float, V: Debug> Ord for OrdFloatContainer<T, V> {
+impl<T: Float + Debug> Ord for OrdFloat<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        self.partial_cmp(other)
+            .expect(&*format!("Invalid points! {self:?} and {other:?}"))
     }
 }
 
-impl<T: Float, V: Default + Debug> From<T> for OrdFloatContainer<T, V> {
+impl<T: Float> From<T> for OrdFloat<T> {
     fn from(f: T) -> Self {
-        Self(f, V::default())
+        Self(f)
     }
 }
 
@@ -45,11 +32,11 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
         .map(|point| Complex::new(point.0, point.1))
         .collect_vec();
 
-    let mut within_distance_tree: OrderedSkipList<OrdFloatContainer<f64, Complex<f64>>> = OrderedSkipList::new();
+    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Complex<f64>> = BTreeMap::new();
     let mut last_within_distance_index = 0;
-    let mut min_distance = f64::max_value();
+    let mut min_distance = f64::MAX;
     let mut closest_pair: Option<(Complex<f64>, Complex<f64>)> = None;
-    for point in &points {
+    for &point in &points {
         while let Some(last_point) = points.get(last_within_distance_index) {
             if point.re - last_point.re > min_distance {
                 within_distance_tree.remove(&last_point.im.into());
@@ -58,25 +45,26 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
                 break;
             }
         }
-        
-        let from: OrdFloatContainer<f64, Complex<f64>> = (point.im - min_distance).into();
-        let to: OrdFloatContainer<f64, Complex<f64>> = (point.im + min_distance).into();
-        for &last_point in within_distance_tree
-            .range(Included(&from), Included(&to))
-            .map(|OrdFloatContainer(k, v)| v)
-        {
+        let from: OrdFloat<f64> = (point.im - min_distance).into();
+        let to: OrdFloat<f64> = (point.im + min_distance).into();
+        for (_, &last_point) in within_distance_tree.range(from..=to) {
             if last_point.im - point.im >= min_distance {
                 break;
             }
 
-            let new_distance = (*point - last_point).norm();
+            let new_distance = (point - last_point).norm();
             if min_distance > new_distance {
-                closest_pair = Some((*point, last_point));
+                closest_pair = Some((point, last_point));
                 min_distance = new_distance;
             }
         }
 
-        within_distance_tree.insert(OrdFloatContainer(point.im, *point))
+        let mut key: OrdFloat<f64> = point.im.into();
+        let mut point_to_insert = point;
+        while let Some(replaced_point) = within_distance_tree.insert(key, point_to_insert) {
+            key.0 += 0.00000000001;
+            point_to_insert = replaced_point;
+        }
     }
 
     let (p0, p1) = closest_pair.expect("Closest pair was not found!");
@@ -92,8 +80,6 @@ mod tests {
     use std::fs::File;
     use std::io::Read;
     use std::path::Path;
-    use num::ToPrimitive;
-    use rand::rngs::ThreadRng;
 
     type Points = ((f64, f64), (f64, f64));
 
@@ -177,31 +163,18 @@ mod tests {
         let points = get_points_from_file("closest_pair_of_points_in_linearithmic_time_test_2.txt");
         let pair = closest_pair(&points);
         dbg!(&pair);
-        //        let points =
-        //            get_points_from_file("closest_pair_of_points_in_linearithmic_time_test_1.txt");
-        //        let pair = closest_pair(&points);
-        //        dbg!(&pair);
     }
 
     #[test]
     fn performance_rnd_test() {
-        fn gen_f64(rng: &mut ThreadRng) -> f64{
-            rng.gen_range(0..1000).to_f64().unwrap() * rng.gen_range(0.001..1.0)
-        }
-        
         let mut rng = thread_rng();
         let points = (0..800_000)
-            .map(|index| (gen_f64(&mut rng), gen_f64(&mut rng)))
+            .map(|index| (rng.gen::<f64>(), rng.gen::<f64>()))
             .collect_vec();
 
-        let delta = 0.000024754221755074468; //0.00069692896507456451
-        let count = points.iter().filter(|p| p.1 < delta && p.1 > -delta).count();
-        dbg!(count);
-        
         let pair = closest_pair(&points);
         dbg!(&pair);
     }
-    
 
     fn get_points_from_file(file: &str) -> Vec<(f64, f64)> {
         //        let current_dir = env::current_dir().unwrap();
