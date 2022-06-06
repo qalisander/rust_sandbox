@@ -5,9 +5,8 @@ use std::cmp::Ordering;
 //use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Debug;
-use std::ops::{Add, AddAssign};
 
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 struct OrdFloat<T: Float>(T);
 
 impl<T: Float> Eq for OrdFloat<T> {}
@@ -33,11 +32,11 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
         .map(|point| Complex::new(point.0, point.1))
         .collect_vec();
 
-    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Complex<f64>> = BTreeMap::new();
+    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Vec<&Complex<f64>>> = BTreeMap::new();
     let mut last_within_distance_index = 0;
-    let mut min_distance = f64::MAX;
+    let mut min_distance = f64::max_value();
     let mut closest_pair: Option<(Complex<f64>, Complex<f64>)> = None;
-    for &point in &points {
+    for point in &points {
         while let Some(last_point) = points.get(last_within_distance_index) {
             if point.re - last_point.re > min_distance {
                 within_distance_tree.remove(&last_point.im.into());
@@ -48,24 +47,26 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
         }
         let from: OrdFloat<f64> = (point.im - min_distance).into();
         let to: OrdFloat<f64> = (point.im + min_distance).into();
-        for (_, &last_point) in within_distance_tree.range(from..=to) {
+        for &&last_point in within_distance_tree
+            .range(from..=to)
+            .flat_map(|(im, re_vec)| re_vec)
+        {
             if last_point.im - point.im >= min_distance {
                 break;
             }
 
-            let new_distance = (point - last_point).norm();
+            let new_distance = (*point - last_point).norm();
             if min_distance > new_distance {
-                closest_pair = Some((point, last_point));
+                closest_pair = Some((*point, last_point));
                 min_distance = new_distance;
             }
         }
 
-        let mut key: OrdFloat<f64> = point.im.into();
-        let mut point_to_insert = point;
-        while let Some(replaced_point) = within_distance_tree.insert(key, point_to_insert) {
-            key.0 += 0.00000000001;
-            point_to_insert = replaced_point;
-        }
+        // TODO: maybe insert values in BTreeMap while we don't get ride of collision
+        within_distance_tree
+            .entry(point.im.into())
+            .or_default()
+            .push(point)
     }
 
     let (p0, p1) = closest_pair.expect("Closest pair was not found!");
