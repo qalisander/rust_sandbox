@@ -45,6 +45,7 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
                 break;
             }
         }
+        
         let from: OrdFloat<f64> = (point.im - min_distance).into();
         let to: OrdFloat<f64> = (point.im + min_distance).into();
         for &&last_point in within_distance_tree
@@ -61,8 +62,7 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
                 min_distance = new_distance;
             }
         }
-
-        // TODO: maybe insert values in BTreeMap while we don't get ride of collision
+        
         within_distance_tree
             .entry(point.im.into())
             .or_default()
@@ -82,6 +82,8 @@ mod tests {
     use std::fs::File;
     use std::io::Read;
     use std::path::Path;
+    use num::ToPrimitive;
+    use rand::rngs::ThreadRng;
 
     type Points = ((f64, f64), (f64, f64));
 
@@ -173,14 +175,23 @@ mod tests {
 
     #[test]
     fn performance_rnd_test() {
+        fn gen_f64(rng: &mut ThreadRng) -> f64{
+            rng.gen_range(0..1000).to_f64().unwrap() * rng.gen_range(0.001..1.0)
+        }
+        
         let mut rng = thread_rng();
         let points = (0..800_000)
-            .map(|index| (rng.gen::<f64>(), rng.gen::<f64>()))
+            .map(|index| (gen_f64(&mut rng), gen_f64(&mut rng)))
             .collect_vec();
 
+        let delta = 0.000024754221755074468; //0.00069692896507456451
+        let count = points.iter().filter(|p| p.1 < delta && p.1 > -delta).count();
+        dbg!(count);
+        
         let pair = closest_pair(&points);
         dbg!(&pair);
     }
+    
 
     fn get_points_from_file(file: &str) -> Vec<(f64, f64)> {
         //        let current_dir = env::current_dir().unwrap();
