@@ -5,23 +5,36 @@ use std::cmp::Ordering;
 //use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Debug;
+use std::ops::Bound::Included;
+use skiplist::{OrderedSkipList, SkipList, SkipMap};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-struct OrdFloat<T: Float>(T);
+#[derive(Debug)]
+struct OrdFloatContainer<K: Float, V: Debug>(K, V);
 
-impl<T: Float> Eq for OrdFloat<T> {}
-
-#[allow(clippy::derive_ord_xor_partial_ord)]
-impl<T: Float + Debug> Ord for OrdFloat<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect(&*format!("Invalid points! {self:?} and {other:?}"))
+impl<K: Float, V: Debug> PartialEq for OrdFloatContainer<K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
     }
 }
 
-impl<T: Float> From<T> for OrdFloat<T> {
+impl<K: Float, V: Debug> PartialOrd for OrdFloatContainer<K, V> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<T: Float, V: Debug> Eq for OrdFloatContainer<T, V> {}
+
+#[allow(clippy::derive_ord_xor_partial_ord)]
+impl<T: Float, V: Debug> Ord for OrdFloatContainer<T, V> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl<T: Float, V: Default + Debug> From<T> for OrdFloatContainer<T, V> {
     fn from(f: T) -> Self {
-        Self(f)
+        Self(f, V::default())
     }
 }
 
@@ -32,7 +45,7 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
         .map(|point| Complex::new(point.0, point.1))
         .collect_vec();
 
-    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Vec<&Complex<f64>>> = BTreeMap::new();
+    let mut within_distance_tree: OrderedSkipList<OrdFloatContainer<f64, Complex<f64>>> = OrderedSkipList::new();
     let mut last_within_distance_index = 0;
     let mut min_distance = f64::max_value();
     let mut closest_pair: Option<(Complex<f64>, Complex<f64>)> = None;
@@ -46,11 +59,11 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
             }
         }
         
-        let from: OrdFloat<f64> = (point.im - min_distance).into();
-        let to: OrdFloat<f64> = (point.im + min_distance).into();
-        for &&last_point in within_distance_tree
-            .range(from..=to)
-            .flat_map(|(im, re_vec)| re_vec)
+        let from: OrdFloatContainer<f64, Complex<f64>> = (point.im - min_distance).into();
+        let to: OrdFloatContainer<f64, Complex<f64>> = (point.im + min_distance).into();
+        for &last_point in within_distance_tree
+            .range(Included(&from), Included(&to))
+            .map(|OrdFloatContainer(k, v)| v)
         {
             if last_point.im - point.im >= min_distance {
                 break;
@@ -62,11 +75,8 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
                 min_distance = new_distance;
             }
         }
-        
-        within_distance_tree
-            .entry(point.im.into())
-            .or_default()
-            .push(point)
+
+        within_distance_tree.insert(OrdFloatContainer(point.im, *point))
     }
 
     let (p0, p1) = closest_pair.expect("Closest pair was not found!");
