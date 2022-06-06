@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn performance_test() {
-        let points = get_points_from_file("closest_pair_of_points_in_linearithmic_time_test_2.txt");
+        let points = get_points_from_file("test_data.txt");
         let pair = closest_pair(&points);
         dbg!(&pair);
     }
@@ -177,8 +177,8 @@ mod tests {
     }
 
     fn get_points_from_file(file: &str) -> Vec<(f64, f64)> {
-        //        let current_dir = env::current_dir().unwrap();
-        let mut test_file = File::open(Path::new("src").join(file)).unwrap();
+        //let current_dir = env::current_dir().unwrap();
+        let mut test_file = File::open(Path::new("src/closest_pair_of_points_in_linearithmic_time").join(file)).unwrap();
         let mut test_data = String::new();
         test_file.read_to_string(&mut test_data).unwrap();
         test_data = test_data.strip_prefix("[(").unwrap().to_string();
