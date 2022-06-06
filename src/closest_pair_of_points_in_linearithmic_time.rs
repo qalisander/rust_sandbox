@@ -1,3 +1,4 @@
+//https://www.codewars.com/kata/5376b901424ed4f8c20002b7
 use itertools::Itertools;
 use num::{Complex, Float};
 use std::cmp::Ordering;
@@ -31,33 +32,37 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
         .map(|point| Complex::new(point.0, point.1))
         .collect_vec();
 
-    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Vec<Complex<f64>>> = BTreeMap::new();
-    let mut within_distance_deque: VecDeque<Complex<f64>> = VecDeque::new();
+    let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Vec<&Complex<f64>>> = BTreeMap::new();
+    let mut last_within_distance_index = 0;
     let mut min_distance = f64::max_value();
     let mut closest_pair: Option<(Complex<f64>, Complex<f64>)> = None;
-    for point in points {
-        while let Some(front_point) = within_distance_deque.pop_front() {
-            if point.re - front_point.re > min_distance {
-                within_distance_tree.remove(&front_point.im.into());
+    for point in &points {
+        while let Some(last_point) = points.get(last_within_distance_index) {
+            if point.re - last_point.re > min_distance {
+                within_distance_tree.remove(&last_point.im.into());
+                last_within_distance_index += 1;
             } else {
-                within_distance_deque.push_front(front_point);
                 break;
             }
         }
         let from: OrdFloat<f64> = (point.im - min_distance).into();
         let to: OrdFloat<f64> = (point.im + min_distance).into();
-        for last_point in within_distance_tree
+        for &&last_point in within_distance_tree
             .range(from..=to)
             .flat_map(|(im, re_vec)| re_vec)
         {
-            let new_distance = (point - last_point).norm();
+            if last_point.im - point.im >= min_distance {
+                break;
+            }
+
+            let new_distance = (*point - last_point).norm();
             if min_distance > new_distance {
-                closest_pair = Some((point, *last_point));
+                closest_pair = Some((*point, last_point));
                 min_distance = new_distance;
             }
         }
 
-        within_distance_deque.push_back(point);
+        // TODO: maybe insert values in BTreeMap while we don't get ride of collision
         within_distance_tree
             .entry(point.im.into())
             .or_default()
@@ -71,6 +76,12 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
 #[cfg(test)]
 mod tests {
     use super::closest_pair;
+    use itertools::Itertools;
+    use rand::{thread_rng, Rng};
+    use std::env;
+    use std::fs::File;
+    use std::io::Read;
+    use std::path::Path;
 
     type Points = ((f64, f64), (f64, f64));
 
@@ -147,5 +158,50 @@ mod tests {
                 (0.7429155700062877, 0.06450600858898675),
             ),
         )
+    }
+
+    #[test]
+    fn performance_test() {
+        let points = get_points_from_file("closest_pair_of_points_in_linearithmic_time_test_2.txt");
+        let pair = closest_pair(&points);
+        dbg!(&pair);
+        //        let points =
+        //            get_points_from_file("closest_pair_of_points_in_linearithmic_time_test_1.txt");
+        //        let pair = closest_pair(&points);
+        //        dbg!(&pair);
+    }
+
+    #[test]
+    fn performance_rnd_test() {
+        let mut rng = thread_rng();
+        let points = (0..800_000)
+            .map(|index| (rng.gen::<f64>(), rng.gen::<f64>()))
+            .collect_vec();
+
+        let pair = closest_pair(&points);
+        dbg!(&pair);
+    }
+
+    fn get_points_from_file(file: &str) -> Vec<(f64, f64)> {
+        //        let current_dir = env::current_dir().unwrap();
+        let mut test_file = File::open(Path::new("src").join(file)).unwrap();
+        let mut test_data = String::new();
+        test_file.read_to_string(&mut test_data).unwrap();
+        test_data = test_data.strip_prefix("[(").unwrap().to_string();
+        test_data = test_data.strip_suffix(",),]").unwrap().to_string();
+        test_data
+            .split(",),(")
+            .map(|str_tuple| {
+                str_tuple
+                    .split(',')
+                    .map(|f_str| {
+                        f_str.parse::<f64>().expect(&*format!(
+                            "Invalid number!\nnum: {f_str}\ntuple: {str_tuple}\n"
+                        ))
+                    })
+                    .collect_tuple::<(f64, f64)>()
+                    .unwrap()
+            })
+            .collect_vec()
     }
 }
