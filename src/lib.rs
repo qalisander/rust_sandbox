@@ -26,3 +26,4 @@ mod street_fighter;
 pub mod transforming_maze_solver;
 mod weight_for_weight;
 mod closest_pair_of_points_in_linearithmic_time;
+mod fluid_volume_of_a_heightmap;
