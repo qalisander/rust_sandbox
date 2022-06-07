@@ -20,10 +20,17 @@ fn volume(heightmap: &Vec<Vec<i32>>) -> i32 {
                 if visited[i0][j0] {
                     continue;
                 }
+                
                 let mut deque = VecDeque::from([(i0, j0)]);
                 let mut increase_height_candidates = vec![];
                 let mut has_increase_height = true;
                 while let Some((i, j)) = deque.pop_front() {
+                    if visited[i][j] {
+                        continue;
+                    }
+                    increase_height_candidates.push((i, j));
+                    visited[i][j] = true;
+
                     let in_bounds = |&(i, j): &(i32, i32)| {
                         0 <= i && i < i_max as i32 && 0 <= j && j < j_max as i32
                     };
@@ -32,9 +39,8 @@ fn volume(heightmap: &Vec<Vec<i32>>) -> i32 {
                     let has_lower_height =
                         |&(ni, nj): &(usize, usize)| heightmap[ni][nj] < heightmap[i][j];
                     let to_usize = |(i, j): (i32, i32)| (i as usize, j as usize);
+                    let has_no_visited = |&(ni, nj): &(usize, usize)| !visited[ni][nj];
 
-                    increase_height_candidates.push((i, j));
-                    visited[i][j] = true;
                     let dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)];
                     let next_points = dirs
                         .into_iter()
@@ -51,7 +57,6 @@ fn volume(heightmap: &Vec<Vec<i32>>) -> i32 {
                                 .any(|p| has_lower_height(&p));
                     }
 
-                    let has_no_visited = |&(ni, nj): &(usize, usize)| !visited[ni][nj];
                     let to_visit = next_points
                         .into_iter()
                         .filter(in_bounds)
