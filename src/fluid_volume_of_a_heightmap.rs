@@ -1,51 +1,71 @@
 //https://www.codewars.com/kata/5b98dfa088d44a8b000001c1/train/rust
 
 use itertools::Itertools;
-use std::collections::{BinaryHeap, VecDeque};
+use std::collections::{BinaryHeap, HashSet, VecDeque};
 
 // 80 <= heightmap <= 100 and -50 <= depth <= 150
 fn volume(heightmap: &Vec<Vec<i32>>) -> i32 {
-    // TODO: prlly create new struct-wraper of heightmap,
+    // TODO: prlly create new struct-wrapper of heightmap,
     let mut total_volume = 0;
-    let mut current_heightmap = heightmap.clone();
+    let mut heightmap = heightmap.clone();
     // TODO: add heap optimisation
-    // let heap = BinaryHeap::new();
+    //    let mut heap = BinaryHeap::new();
     loop {
         let mut floor_volume = 0;
         let i_max = heightmap.len();
         let j_max = heightmap[0].len();
-        'outer: for i0 in 0_usize..i_max {
+        let mut visited = vec![vec![false; j_max]; i_max];
+        for i0 in 0_usize..i_max {
             for j0 in 0_usize..j_max {
+                if visited[i0][j0] {
+                    continue;
+                }
                 let mut deque = VecDeque::from([(i0, j0)]);
-                let mut increase_height = vec![];
+                let mut increase_height_candidates = vec![];
+                let mut has_increase_height = true;
                 while let Some((i, j)) = deque.pop_front() {
-                    increase_height.push((i, j));
                     let in_bounds = |&(i, j): &(i32, i32)| {
                         0 <= i && i < i_max as i32 && 0 <= j && j < j_max as i32
                     };
-                    let has_same_height = |&(ni, nj): &(usize, usize)| {
-                        current_heightmap[ni][nj] == current_heightmap[i][j]
-                    };
-                    let has_lower_height = |&(ni, nj): &(usize, usize)| {
-                        current_heightmap[ni][nj] < current_heightmap[i][j]
-                    };
+                    let has_same_height =
+                        |&(ni, nj): &(usize, usize)| heightmap[ni][nj] == heightmap[i][j];
+                    let has_lower_height =
+                        |&(ni, nj): &(usize, usize)| heightmap[ni][nj] < heightmap[i][j];
+                    let to_usize = |(i, j): (i32, i32)| (i as usize, j as usize);
+
+                    increase_height_candidates.push((i, j));
+                    visited[i][j] = true;
                     let dirs = [(-1, 0), (1, 0), (0, -1), (0, 1)];
                     let next_points = dirs
                         .into_iter()
                         .map(|(di, dj)| (i as i32 + di, j as i32 + dj))
-                        .filter(in_bounds)
-                        .map(|(i, j)| (i as usize, j as usize))
                         .collect_vec();
-                    
-                    if next_points.iter().any(has_lower_height){
-                        break 'outer;
+
+                    if has_increase_height {
+                        has_increase_height = next_points.iter().all(in_bounds)
+                            && !next_points
+                                .iter()
+                                .cloned()
+                                .filter(in_bounds)
+                                .map(to_usize)
+                                .any(|p| has_lower_height(&p));
                     }
-                    
-                    deque.extend(next_points.into_iter().filter(has_same_height));
+
+                    let has_no_visited = |&(ni, nj): &(usize, usize)| !visited[ni][nj];
+                    let to_visit = next_points
+                        .into_iter()
+                        .filter(in_bounds)
+                        .map(to_usize)
+                        .filter(has_same_height)
+                        .filter(has_no_visited);
+                    deque.extend(to_visit);
                 }
 
-                for (i, j) in increase_height {
-                    current_heightmap[i][j] += 1;
+                if has_increase_height {
+                    for (i, j) in increase_height_candidates {
+                        heightmap[i][j] += 1;
+                        floor_volume += 1;
+                    }
                 }
             }
         }
