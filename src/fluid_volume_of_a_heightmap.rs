@@ -28,8 +28,8 @@ fn volume(heightmap: &Vec<Vec<i32>>) -> i32 {
     let j_max = heightmap[0].len();
     let mut total_volume = 0;
     let mut heightmap = heightmap.clone();
-    let cells = heightmap.iter().enumerate().flat_map(|(i, raw)| {
-        raw.iter()
+    let cells = heightmap.iter().enumerate().flat_map(|(i, row)| {
+        row.iter()
             .enumerate()
             .map(move |(j, heigh)| Cell::new(*heigh, (i, j)))
     });
