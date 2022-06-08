@@ -2,6 +2,7 @@
 mod pnz {
     use crate::plants_and_zombies::pnz::Tile::Empty;
     use itertools::Itertools;
+    use std::ops::Deref;
 
     #[derive(Copy, Clone, Debug)]
     enum Tile {
@@ -61,8 +62,8 @@ mod pnz {
 
         fn zombies_make_step(&mut self) -> GameStatus {
             let mut zombies_left = 0;
-            for i in 0..self.tiles.len() {
-                for j in 0..self.tiles[0].len() {
+            for i in 0..self.i_max() {
+                for j in 0..self.j_max() {
                     if let Tile::Zombie { .. } = self.tiles[i][j] {
                         if j == 0 {
                             return GameStatus::ZombiesWon;
@@ -82,16 +83,73 @@ mod pnz {
                 self.zombies_outside.pop();
                 zombies_left += 1;
             }
-            
+
             if zombies_left == 0 {
                 GameStatus::ZombiesLost
             } else {
                 GameStatus::Unknown
             }
         }
-        
-        fn shooters_fire(&mut self){
-            todo!()
+
+        fn shooters_fire(&mut self) {
+            for i in 0..self.i_max() {
+                let mut horiz_zombies_killed = 0;
+                for j in 0..self.j_max() {
+                    match self.tiles[i][j] {
+                        Tile::Shooter { power } => horiz_zombies_killed += power,
+                        Tile::SShooter => horiz_zombies_killed += 1,
+                        Tile::Zombie { ref mut hp } => {
+                            if horiz_zombies_killed >= *hp { // TODO: use shoot_zombie
+                                horiz_zombies_killed -= *hp;
+                                self.tiles[i][j] = Tile::Empty;
+                            } else {
+                                *hp -= horiz_zombies_killed;
+                                horiz_zombies_killed = 0;
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            for i in 0..self.i_max() {
+                for j in 0..self.j_max() {
+                    if let Tile::SShooter = self.tiles[i][j] {
+                        for d in 0.. {
+                            let (i1, j1) = (i + d, j + d);
+                            if i1 < self.i_max() && j1 < self.j_max() {
+                                self.shoot_zombie((i1, j1), 1);
+                            } else {
+                                break;
+                            }
+                        }
+                        for d in 0.. {
+                            let (i1, j1) = (i - d, j + d); // BUG
+                            if i1 < self.i_max() && j1 < self.j_max() {
+                                self.shoot_zombie((i1, j1), 1);
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fn shoot_zombie(&mut self, (i, j): (usize, usize), power: usize) {
+            if let Tile::Zombie { ref mut hp } = self.tiles[i][j] {
+                if power >= *hp {
+                    self.tiles[i][j] = Tile::Empty;
+                } else {
+                    *hp -= power;
+                }
+            }
+        }
+
+        fn i_max(&mut self) -> usize {
+            self.tiles.len()
+        }
+        fn j_max(&mut self) -> usize {
+            self.tiles[0].len()
         }
     }
 
@@ -107,7 +165,7 @@ mod pnz {
             match field.zombies_make_step() {
                 GameStatus::ZombiesWon => break field.turn + 1,
                 GameStatus::ZombiesLost => break 0,
-                GameStatus::Unknown => {},
+                GameStatus::Unknown => {}
             }
             field.shooters_fire();
             field.turn += 1;
