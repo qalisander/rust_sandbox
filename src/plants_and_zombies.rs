@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
 //https://www.codewars.com/kata/5a5db0f580eba84589000979/train/rust
 use itertools::Itertools;
+use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Debug)]
 enum Tile {
@@ -128,17 +128,16 @@ impl Field {
     }
 
     fn shooters_fire(&mut self) {
-        self.shoot_horizontally();
-        self.shoot_diagonally();
+        self.simple_shooters_fire();
+        self.s_shooters_fire();
     }
 
-    fn shoot_horizontally(&mut self) {
+    fn simple_shooters_fire(&mut self) {
         for i in 0..self.i_max() {
             let mut total_power = 0;
             for j in 0..self.j_max() {
                 match self.tiles[i][j] {
                     Tile::Shooter { power } => total_power += power,
-                    Tile::SShooter => total_power += 1,
                     _ => {
                         self.try_shoot_zombie((i, j), &mut total_power);
                     }
@@ -147,10 +146,15 @@ impl Field {
         }
     }
 
-    fn shoot_diagonally(&mut self) {
+    fn s_shooters_fire(&mut self) {
         for i in 0..self.i_max() {
             for j in 0..self.j_max() {
                 if let Tile::SShooter = self.tiles[i][j] {
+                    for j1 in j.. {
+                        if j1 >= self.j_max() || self.try_shoot_zombie((i, j1), &mut 1) {
+                            break;
+                        }
+                    }
                     for d in 0.. {
                         if i + d >= self.i_max()
                             || j + d >= self.j_max()
@@ -206,7 +210,7 @@ pub fn plants_and_zombies(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> usize 
     loop {
         println!("{}", field);
         match field.zombies_make_step() {
-            GameStatus::ZombiesWon => break field.turn + 1,
+            GameStatus::ZombiesWon => break field.turn,
             GameStatus::ZombiesLost => break 0,
             GameStatus::Unknown => {}
         }
@@ -215,11 +219,11 @@ pub fn plants_and_zombies(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> usize 
     }
 }
 
-//#[cfg(test)]
+#[cfg(test)]
 pub mod example_tests {
     use super::*;
 
-    //    #[test]
+    #[test]
     #[rustfmt::skip]
     pub fn tests() {
         let example_tests: Vec<(Vec<&str>,Vec<Vec<usize>>,usize)> = vec![
@@ -324,7 +328,43 @@ pub mod example_tests {
                     vec![12,1,15],
                     vec![13,3,22]],
                 0
-            )
+            ), 
+            (
+                vec![
+                "2S12    ",
+                "22S1    ",
+                "5SS     ",
+                "51      ",
+                " 3 1    ",
+            ], vec![
+                vec![1,0,21,],
+                vec![1,2,25,],
+                vec![1,3,21,],
+                vec![1,4,14,],
+                vec![3,0,14,],
+                vec![3,2,17,],
+                vec![3,3,14,],
+                vec![3,4,9,],
+                vec![5,3,11,],
+                vec![5,4,7,],
+                vec![8,0,13,],
+                vec![8,1,29,],
+                vec![8,2,15,],
+                vec![9,1,19,],
+                vec![9,3,11,],
+                vec![9,4,8,],
+                vec![11,0,16,],
+                vec![11,1,16,],
+                vec![11,2,18,],
+                vec![11,3,12,],
+                vec![12,0,11,],
+                vec![12,1,11,],
+                vec![12,2,13,],
+                vec![12,4,9,],
+                vec![13,3,12,],
+                vec![14,0,12,],
+                vec![14,2,13,],
+            ], 17),
         ];
 
         example_tests.into_iter().for_each(|(grid,zqueue,sol)| assert_eq!(plants_and_zombies(&grid,&zqueue),sol));
