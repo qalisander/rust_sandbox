@@ -1,185 +1,227 @@
+use std::fmt::{Display, Formatter};
 //https://www.codewars.com/kata/5a5db0f580eba84589000979/train/rust
-mod pnz {
-    use crate::plants_and_zombies::pnz::Tile::Empty;
-    use itertools::Itertools;
-    use std::ops::Deref;
+use itertools::Itertools;
 
-    #[derive(Copy, Clone, Debug)]
-    enum Tile {
-        Shooter { power: usize },
-        SShooter,
-        Zombie { hp: usize },
-        Empty,
-    }
+#[derive(Copy, Clone, Debug)]
+enum Tile {
+    Shooter { power: usize },
+    SShooter,
+    Zombie { hp: usize },
+    Empty,
+}
 
-    #[derive(Debug)]
-    struct Field {
-        tiles: Vec<Vec<Tile>>,
-        zombies_outside: Vec<(usize, usize, usize)>,
-        turn: usize,
-    }
-
-    enum GameStatus {
-        ZombiesWon,
-        ZombiesLost,
-        Unknown,
-    }
-
-    impl Field {
-        pub fn new(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> Self {
-            let tiles = lawn
-                .iter()
-                .map(|str| {
-                    str.chars()
-                        .map(|ch| match ch {
-                            'S' => Tile::SShooter,
-                            ' ' => Empty,
-                            ch => {
-                                let power = ch.to_digit(10).expect("Invalid char!") as usize;
-                                Tile::Shooter { power }
-                            }
-                        })
-                        .collect_vec()
-                })
-                .collect_vec();
-            let zombies_outside = zombies
-                .iter()
-                .map(|vec| {
-                    vec.iter()
-                        .cloned()
-                        .collect_tuple::<(_, _, _)>()
-                        .expect("Invalid zombie info!")
-                })
-                .sorted()
-                .rev()
-                .collect_vec();
-            Self {
-                tiles,
-                zombies_outside,
-                turn: 0,
+impl Display for Tile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:^3}",
+            match self {
+                Tile::Shooter { power } => power.to_string(),
+                Tile::SShooter => "S".to_string(),
+                Tile::Zombie { hp } => format!("Z{}", hp),
+                Tile::Empty => ".".to_string(),
             }
-        }
-
-        fn zombies_make_step(&mut self) -> GameStatus {
-            let mut zombies_left = 0;
-            for i in 0..self.i_max() {
-                for j in 0..self.j_max() {
-                    if let Tile::Zombie { .. } = self.tiles[i][j] {
-                        if j == 0 {
-                            return GameStatus::ZombiesWon;
-                        }
-                        self.tiles[i][j - 1] = self.tiles[i][j];
-                        self.tiles[i][j] = Tile::Empty;
-                        zombies_left += 1;
-                    }
-                }
-            }
-
-            while let &Some(&(i, row, hp)) = &self.zombies_outside.last() {
-                if i != self.turn {
-                    break;
-                }
-                *self.tiles[row].last_mut().unwrap() = Tile::Zombie { hp };
-                self.zombies_outside.pop();
-                zombies_left += 1;
-            }
-
-            if zombies_left == 0 {
-                GameStatus::ZombiesLost
-            } else {
-                GameStatus::Unknown
-            }
-        }
-
-        fn shooters_fire(&mut self) {
-            for i in 0..self.i_max() {
-                let mut horiz_zombies_killed = 0;
-                for j in 0..self.j_max() {
-                    match self.tiles[i][j] {
-                        Tile::Shooter { power } => horiz_zombies_killed += power,
-                        Tile::SShooter => horiz_zombies_killed += 1,
-                        Tile::Zombie { ref mut hp } => {
-                            if horiz_zombies_killed >= *hp { // TODO: use shoot_zombie
-                                horiz_zombies_killed -= *hp;
-                                self.tiles[i][j] = Tile::Empty;
-                            } else {
-                                *hp -= horiz_zombies_killed;
-                                horiz_zombies_killed = 0;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            for i in 0..self.i_max() {
-                for j in 0..self.j_max() {
-                    if let Tile::SShooter = self.tiles[i][j] {
-                        for d in 0.. {
-                            let (i1, j1) = (i + d, j + d);
-                            if i1 < self.i_max() && j1 < self.j_max() {
-                                self.shoot_zombie((i1, j1), 1);
-                            } else {
-                                break;
-                            }
-                        }
-                        for d in 0.. {
-                            let (i1, j1) = (i - d, j + d); // BUG
-                            if i1 < self.i_max() && j1 < self.j_max() {
-                                self.shoot_zombie((i1, j1), 1);
-                            } else {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        fn shoot_zombie(&mut self, (i, j): (usize, usize), power: usize) {
-            if let Tile::Zombie { ref mut hp } = self.tiles[i][j] {
-                if power >= *hp {
-                    self.tiles[i][j] = Tile::Empty;
-                } else {
-                    *hp -= power;
-                }
-            }
-        }
-
-        fn i_max(&mut self) -> usize {
-            self.tiles.len()
-        }
-        fn j_max(&mut self) -> usize {
-            self.tiles[0].len()
-        }
-    }
-
-    // game rules
-    // - zombie makes a step. And if it's position intersect with a shooter. It dies.
-    // - simple shooters fire straight
-    // - S shooters fire straight
-    // - S shooters fire diagonally
-    // - zombies dies instantly and don't absorb any additional pellets
-    pub fn plants_and_zombies(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> usize {
-        let mut field = Field::new(lawn, zombies);
-        loop {
-            match field.zombies_make_step() {
-                GameStatus::ZombiesWon => break field.turn + 1,
-                GameStatus::ZombiesLost => break 0,
-                GameStatus::Unknown => {}
-            }
-            field.shooters_fire();
-            field.turn += 1;
-        }
+        )
     }
 }
 
-#[cfg(test)]
-#[rustfmt::skip]
-mod example_tests {
+#[derive(Debug)]
+struct Field {
+    tiles: Vec<Vec<Tile>>,
+    zombies_outside: Vec<(usize, usize, usize)>,
+    turn: usize,
+}
+
+impl Display for Field {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for row in &self.tiles {
+            writeln!(
+                f,
+                "{}\n",
+                row.iter().map(|tile| tile.to_string()).collect::<String>()
+            )?;
+        }
+        writeln!(
+            f,
+            "{}",
+            self.zombies_outside
+                .iter()
+                .rev()
+                .map(|(i, row, hp)| format!("(i: {i}; row: {row}, hp: {hp}); "))
+                .collect::<String>()
+        )?;
+        writeln!(f, "turn: {}\n", self.turn)?;
+        Ok(())
+    }
+}
+
+enum GameStatus {
+    ZombiesWon,
+    ZombiesLost,
+    Unknown,
+}
+
+impl Field {
+    pub fn new(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> Self {
+        let tiles = lawn
+            .iter()
+            .map(|str| {
+                str.chars()
+                    .map(|ch| match ch {
+                        'S' => Tile::SShooter,
+                        ' ' => Tile::Empty,
+                        ch => {
+                            let power = ch.to_digit(10).expect("Invalid char!") as usize;
+                            Tile::Shooter { power }
+                        }
+                    })
+                    .collect_vec()
+            })
+            .collect_vec();
+        let zombies_outside = zombies
+            .iter()
+            .map(|vec| {
+                vec.iter()
+                    .cloned()
+                    .collect_tuple::<(_, _, _)>()
+                    .expect("Invalid zombie info!")
+            })
+            .sorted()
+            .rev()
+            .collect_vec();
+        Self {
+            tiles,
+            zombies_outside,
+            turn: 0,
+        }
+    }
+
+    fn zombies_make_step(&mut self) -> GameStatus {
+        let mut zombies_left = 0;
+        for i in 0..self.i_max() {
+            for j in 0..self.j_max() {
+                if let Tile::Zombie { .. } = self.tiles[i][j] {
+                    if j == 0 {
+                        return GameStatus::ZombiesWon;
+                    }
+                    self.tiles[i][j - 1] = self.tiles[i][j];
+                    self.tiles[i][j] = Tile::Empty;
+                    zombies_left += 1;
+                }
+            }
+        }
+
+        while let &Some(&(i, row, hp)) = &self.zombies_outside.last() {
+            if i != self.turn {
+                break;
+            }
+            *self.tiles[row].last_mut().unwrap() = Tile::Zombie { hp };
+            self.zombies_outside.pop();
+            zombies_left += 1;
+        }
+
+        if zombies_left == 0 {
+            GameStatus::ZombiesLost
+        } else {
+            GameStatus::Unknown
+        }
+    }
+
+    fn shooters_fire(&mut self) {
+        self.shoot_horizontally();
+        self.shoot_diagonally();
+    }
+
+    fn shoot_horizontally(&mut self) {
+        for i in 0..self.i_max() {
+            let mut total_power = 0;
+            for j in 0..self.j_max() {
+                match self.tiles[i][j] {
+                    Tile::Shooter { power } => total_power += power,
+                    Tile::SShooter => total_power += 1,
+                    _ => {
+                        self.try_shoot_zombie((i, j), &mut total_power);
+                    }
+                }
+            }
+        }
+    }
+
+    fn shoot_diagonally(&mut self) {
+        for i in 0..self.i_max() {
+            for j in 0..self.j_max() {
+                if let Tile::SShooter = self.tiles[i][j] {
+                    for d in 0.. {
+                        if i + d >= self.i_max()
+                            || j + d >= self.j_max()
+                            || self.try_shoot_zombie((i + d, j + d), &mut 1)
+                        {
+                            break;
+                        }
+                    }
+                    for d in 0.. {
+                        if i < d
+                            || i - d >= self.i_max()
+                            || j + d >= self.j_max()
+                            || self.try_shoot_zombie((i - d, j + d), &mut 1)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn try_shoot_zombie(&mut self, (i, j): (usize, usize), power: &mut usize) -> bool {
+        if let Tile::Zombie { hp } = self.tiles[i][j] {
+            self.tiles[i][j] = if *power >= hp {
+                Tile::Empty
+            } else {
+                Tile::Zombie { hp: hp - *power }
+            };
+            *power = power.saturating_sub(hp);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn i_max(&mut self) -> usize {
+        self.tiles.len()
+    }
+    fn j_max(&mut self) -> usize {
+        self.tiles[0].len()
+    }
+}
+
+// game rules
+// - zombie makes a step. And if it's position intersect with a shooter. It dies.
+// - simple shooters fire straight
+// - S shooters fire straight
+// - S shooters fire diagonally
+// - zombies dies instantly and don't absorb any additional pellets
+pub fn plants_and_zombies(lawn: &Vec<&str>, zombies: &Vec<Vec<usize>>) -> usize {
+    let mut field = Field::new(lawn, zombies);
+    loop {
+        println!("{}", field);
+        match field.zombies_make_step() {
+            GameStatus::ZombiesWon => break field.turn + 1,
+            GameStatus::ZombiesLost => break 0,
+            GameStatus::Unknown => {}
+        }
+        field.shooters_fire();
+        field.turn += 1;
+    }
+}
+
+//#[cfg(test)]
+pub mod example_tests {
     use super::*;
 
-    #[test]
-    fn example_tests() {
+    //    #[test]
+    #[rustfmt::skip]
+    pub fn tests() {
         let example_tests: Vec<(Vec<&str>,Vec<Vec<usize>>,usize)> = vec![
             (
                 vec![
@@ -285,6 +327,6 @@ mod example_tests {
             )
         ];
 
-        example_tests.into_iter().for_each(|(grid,zqueue,sol)| assert_eq!(pnz::plants_and_zombies(&grid,&zqueue),sol));
+        example_tests.into_iter().for_each(|(grid,zqueue,sol)| assert_eq!(plants_and_zombies(&grid,&zqueue),sol));
     }
 }
