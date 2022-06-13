@@ -1,5 +1,5 @@
-use std::collections::VecDeque;
 //https://www.codewars.com/kata/5a5db0f580eba84589000979/train/rust
+use std::collections::VecDeque;
 use itertools::Itertools;
 use std::fmt::{Display, Formatter};
 
@@ -145,8 +145,8 @@ impl Field {
     }
 
     fn s_shooters_fire(&mut self) {
-        for i in 0..self.i_max() {
-            for j in (0..self.j_max()).rev() {
+        for j in (0..self.j_max()).rev() {
+            for i in 0..self.i_max() {
                 if let Tile::SShooter = self.tiles[i][j] {
                     for j1 in j.. {
                         if j1 >= self.j_max() || self.try_shoot_zombie((i, j1), &mut 1) {
@@ -363,6 +363,105 @@ pub mod example_tests {
                 vec![14,0,12,],
                 vec![14,2,13,],
             ], 17),
+            (
+                vec![
+                "2SS3         ", //0
+                "SS13 1       ", //1
+                "  21         ",
+                "5S2S         ",
+                "S123S1       ",
+                "1S3S         ",
+                "22   1       ",
+                "5S2 S1       ",
+                "13S  1       ",
+                "32SS         ",
+                " 4           ",
+                "3 SS         ",
+                "S2           ",
+                "222S         ", //13
+            ], 
+                vec![
+                    vec![0,0,56,],
+                    vec![0,1,56,],
+                    vec![0,2,24,],
+                    vec![0,3,72,],
+                    vec![0,4,72,],
+                    vec![0,5,48,],
+                    vec![0,6,40,],
+                    vec![0,7,80,],
+                    vec![0,8,48,],
+                    vec![0,12,24,],
+                    vec![3,10,34,],
+                    vec![3,11,43,],
+                    vec![4,0,30,],
+                    vec![4,1,30,],
+                    vec![4,2,13,],
+                    vec![4,3,39,],
+                    vec![4,6,21,],
+                    vec![4,8,26,],
+                    vec![4,9,65,],
+                    vec![5,5,29,],
+                    vec![5,7,49,],
+                    vec![5,9,29,],
+                    vec![5,10,18,],
+                    vec![5,11,22,],
+                    vec![5,12,14,],
+                    vec![5,13,69,],
+                    vec![7,13,31,], // -- winner
+                    vec![8,4,55,],
+                    vec![9,0,29,],
+                    vec![9,1,29,],
+                    vec![9,2,12,],
+                    vec![9,3,37,],
+                    vec![9,6,21,],
+                    vec![9,8,24,],
+                    vec![10,7,44,],
+                    vec![10,9,28,],
+                    vec![10,10,17,],
+                    vec![11,4,38,],
+                    vec![11,5,30,],
+                    vec![11,12,15,],
+                    vec![12,13,33,], // -- should be winner
+                    vec![13,0,28,],
+                    vec![13,1,28,],
+                    vec![13,2,12,],
+                    vec![13,6,20,],
+                    vec![13,8,24,],
+                    vec![13,11,31,],
+                    vec![14,7,41,],
+                    vec![14,9,28,],
+                    vec![14,10,16,],
+                    vec![16,3,47,],
+                    vec![16,4,37,],
+                    vec![16,5,26,],
+                    vec![16,12,13,],
+                    vec![17,13,30,],
+                    vec![18,1,28,],
+                    vec![18,2,12,],
+                    vec![18,6,20,],
+                    vec![18,8,24,],
+                    vec![19,0,32,],
+                    vec![19,7,40,],
+                    vec![19,9,28,],
+                    vec![19,10,16,],
+                    vec![21,3,40,],
+                    vec![21,4,36,],
+                    vec![21,12,13,],
+                    vec![22,5,29,],
+                    vec![22,11,33,],
+                    vec![23,1,28,],
+                    vec![23,2,12,],
+                    vec![23,6,20,],
+                    vec![23,8,24,],
+                    vec![23,13,33,],
+                    vec![25,7,40,],
+                    vec![25,9,28,],
+                    vec![25,10,16,],
+                    vec![26,3,38,],
+                    vec![26,4,36,],
+                    vec![28,0,39,],
+                    vec![28,11,25,],
+            ], 25),
         ];
 
         example_tests.into_iter().for_each(|(grid,zqueue,sol)| assert_eq!(plants_and_zombies(&grid,&zqueue),sol));
