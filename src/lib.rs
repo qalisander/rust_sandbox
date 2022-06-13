@@ -28,3 +28,4 @@ mod weight_for_weight;
 mod closest_pair_of_points_in_linearithmic_time;
 mod fluid_volume_of_a_heightmap;
 pub mod plants_and_zombies;
+mod sort_binary_tree_by_levels;
