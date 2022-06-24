@@ -1,8 +1,29 @@
 // https://www.codewars.com/kata/5265b0885fda8eac5900093b/train/rust
 
+use std::ops::Deref;
+
 enum Ast {
-    // your code
+    BinOp(String, Box<Ast>, Box<Ast>),
+    UnOp(String, f64)
 }
+
+// Syntax
+//  function   ::= '[' arg-list ']' expression
+//  
+//  arg-list   ::= /* nothing */
+//  | variable arg-list
+//  
+//  expression ::= term
+//  | expression '+' term
+//  | expression '-' term
+//  
+//  term       ::= factor
+//  | term '*' factor
+//  | term '/' factor
+//  
+//  factor     ::= number
+//  | variable
+//  | '(' expression ')'
 
 struct Compiler {
     // your code
@@ -13,36 +34,32 @@ impl Compiler {
         Compiler { }
     }
 
-    fn tokenize<'a>(&self, program : &'a str) -> Vec<String> {
+    fn tokenize(&self, program : &str) -> Vec<String> {
         let mut tokens : Vec<String> = vec![];
 
         let mut iter = program.chars().peekable();
-        loop {
-            match iter.peek() {
-                Some(&c) => match c {
-                    'a'..='z'|'A'..='Z' => {
-                        let mut tmp = String::new();
-                        while iter.peek().is_some() && iter.peek().unwrap().is_alphabetic() {
-                            tmp.push(iter.next().unwrap());
-                        }
-                        tokens.push(tmp);
-                    },
-                    '0'..='9' => {
-                        let mut tmp = String::new();
-                        while iter.peek().is_some() && iter.peek().unwrap().is_numeric() {
-                            tmp.push(iter.next().unwrap());
-                        }
-                        tokens.push(tmp);
-                    },
-                    ' ' => { iter.next(); },
-                    _ => {
-                        tokens.push(iter.next().unwrap().to_string());
-                    },
+        while let Some(&c) = iter.peek() {
+            match c {
+                'a'..='z'|'A'..='Z' => {
+                    let mut tmp = String::new();
+                    while iter.peek().is_some() && iter.peek().unwrap().is_alphabetic() {
+                        tmp.push(iter.next().unwrap());
+                    }
+                    tokens.push(tmp);
                 },
-                None => break
+                '0'..='9' => {
+                    let mut tmp = String::new();
+                    while iter.peek().is_some() && iter.peek().unwrap().is_numeric() {
+                        tmp.push(iter.next().unwrap());
+                    }
+                    tokens.push(tmp);
+                },
+                ' ' => { iter.next(); },
+                _ => {
+                    tokens.push(iter.next().unwrap().to_string());
+                }
             }
         }
-
         tokens
     }
 
@@ -52,16 +69,19 @@ impl Compiler {
         self.pass3(&ast)
     }
 
+    // Compile to ast
     fn pass1(&mut self, program : &str) -> Ast {
         let tokens = self.tokenize(program);
         let mut iter = tokens.iter().peekable();
         todo!()
     }
 
+    // Reduce constants
     fn pass2(&mut self, ast : &Ast) -> Ast {
         todo!()
     }
 
+    // Compiling ast
     fn pass3(&mut self, ast : &Ast) -> Vec<String> {
         todo!()
     }
