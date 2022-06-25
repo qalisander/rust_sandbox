@@ -107,7 +107,7 @@ impl Interpreter {
         }
     }
 
-    // NOTE: no recursion implementation looks pretty:)
+    // NOTE: non recursion implementation looks pretty:)
     fn check_fn_body(&mut self, fn_body: &FnBody) -> Result<(), String> {
         if fn_body.params.iter().duplicates().count() > 0 {
             return Err(format!("ERROR: Duplicates in function:\n{fn_body:?}"));

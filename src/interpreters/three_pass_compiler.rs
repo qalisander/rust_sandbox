@@ -43,7 +43,7 @@ where
     //  expression ::= term ( '+' | '-' term )*
     //  term       ::= factor ( '*' | '/' factor )*
     //  factor     ::= number | variable | '(' expression ')'
-    fn parse(&mut self) -> Expr {
+    pub fn parse(&mut self) -> Expr {
         self.tokens.next_if_eq("[").expect("Invalid arg-list!");
         for index_of_arg in 0.. {
             let arg = self.tokens.next().expect("Invalid arg-list!");
@@ -158,8 +158,9 @@ impl Compiler {
 
     // Compile to ast
     fn pass1(&mut self, program: &str) -> Expr {
-        //        self.tokenize(program).into()
-        todo!()
+        let tokens = self.tokenize(program);
+        let mut parser = Parser::new(tokens.into_iter());
+        parser.parse()
     }
 
     // Reduce constants
@@ -181,11 +182,10 @@ mod tests {
     use test_case::test_case;
 
     #[test]
-    fn pass2() {
+    fn pass1() {
         fn test(program: &str, expected_ast: Expr) {
             let mut compiler = Compiler::new();
             let ast = compiler.pass1(program);
-            let ast = compiler.pass2(&ast);
             assert_eq!(ast, expected_ast)
         }
 
