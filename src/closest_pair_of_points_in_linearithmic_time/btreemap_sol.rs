@@ -3,6 +3,7 @@ use itertools::Itertools;
 use num::{Complex, Float};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
+use std::f64;
 use std::fmt::Debug;
 use std::ops::{Add, AddAssign};
 
@@ -15,7 +16,7 @@ impl<T: Float> Eq for OrdFloat<T> {}
 impl<T: Float + Debug> Ord for OrdFloat<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other)
-            .expect(&*format!("Invalid points! {self:?} and {other:?}"))
+            .unwrap_or_else(|| panic!("Invalid points! {self:?} and {other:?}"))
     }
 }
 
@@ -34,7 +35,7 @@ fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
 
     let mut within_distance_tree: BTreeMap<OrdFloat<f64>, Complex<f64>> = BTreeMap::new();
     let mut last_within_distance_index = 0;
-    let mut min_distance = f64::MAX;
+    let mut min_distance = f64::max_value();
     let mut closest_pair: Option<(Complex<f64>, Complex<f64>)> = None;
     for &point in &points {
         while let Some(last_point) = points.get(last_within_distance_index) {
@@ -178,7 +179,9 @@ mod tests {
 
     fn get_points_from_file(file: &str) -> Vec<(f64, f64)> {
         //let current_dir = env::current_dir().unwrap();
-        let mut test_file = File::open(Path::new("src/closest_pair_of_points_in_linearithmic_time").join(file)).unwrap();
+        let mut test_file =
+            File::open(Path::new("src/closest_pair_of_points_in_linearithmic_time").join(file))
+                .unwrap();
         let mut test_data = String::new();
         test_file.read_to_string(&mut test_data).unwrap();
         test_data = test_data.strip_prefix("[(").unwrap().to_string();
