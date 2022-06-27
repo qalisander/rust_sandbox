@@ -5,6 +5,7 @@ use std::collections::btree_map::IntoKeys;
 use std::collections::HashMap;
 use std::iter::Peekable;
 
+// TODO: rewrite to ast method
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Expr {
     Binary(Box<Expr>, char, Box<Expr>),
@@ -152,7 +153,7 @@ impl Compiler {
 
     fn compile(&mut self, program: &str) -> Vec<String> {
         let mut expr = self.map_to_expression(program);
-        self.reduce_consts(&mut expr);
+        self.reduce_consts_mut(&mut expr);
         self.compile_to_asm(&expr)
     }
 
@@ -162,24 +163,25 @@ impl Compiler {
         parser.parse()
     }
 
-//    fn reduce_consts_mut_iter(&mut self, expr: &mut Expr) -> Expr {
-//        let mut stack = vec![expr];
-//        while let Some(expr) = stack.pop() {
-//            if let Expr::Binary(left, op, right) = expr {
-//                match (&mut **left, &mut **right) {
-//                    (Expr::Num(num0), Expr::Num(num1)) => {
-//                        *expr = Expr::Num(0);
-//                    }
-//                    (left, right) => {
-//                        stack.push(left);
-//                        stack.push(right);
-//                    }
-//                }
-//            };
-//        }
-//    }
+    //    fn reduce_consts_mut_iter(&mut self, expr: &mut Expr) {
+    //        let mut stack = vec![expr];
+    //        while let Some(expr) = stack.pop() {
+    //            if let Expr::Binary(left, op, right) = expr {
+    //                match (&mut **left, &mut **right) {
+    //                    (Expr::Num(num0), Expr::Num(num1)) => {
+    //                        *expr = Expr::Num(0);
+    //                        continue
+    //                    }
+    //                    (left, right) => {
+    //                        stack.push(left);
+    //                        stack.push(right);
+    //                    }
+    //                }
+    //            };
+    //        }
+    //    }
 
-    fn reduce_consts(&mut self, expr: &mut Expr) {
+    fn reduce_consts_mut(&mut self, expr: &mut Expr) {
         if let Expr::Binary(left, op, right) = expr {
             match (&mut **left, &mut **right) {
                 (Expr::Num(l_num), Expr::Num(r_num)) => {
@@ -191,17 +193,70 @@ impl Compiler {
                         _ => panic!("Invalid operation!"),
                     };
                     *expr = Expr::Num(num);
-                }
+                },
                 (left, right) => {
-                    self.reduce_consts(left);
-                    self.reduce_consts(right);
+                    self.reduce_consts_mut(left);
+                    self.reduce_consts_mut(right);
                 }
             }
         }
     }
 
+    fn reduce_consts(&mut self, expr: &Expr) -> Expr {
+        match expr {
+            Expr::Binary(left, op, right) => match (&**left, &**right) {
+                (Expr::Num(l_num), Expr::Num(r_num)) => {
+                    let num = match op {
+                        '+' => *l_num + *r_num,
+                        '-' => *l_num - *r_num,
+                        '*' => *l_num * *r_num,
+                        '/' => *l_num / *r_num,
+                        _ => panic!("Invalid operation!"),
+                    };
+                    Expr::Num(num)
+                }
+                (left, right) => Expr::Binary(
+                    self.reduce_consts(left).boxed(),
+                    *op,
+                    self.reduce_consts(right).boxed(),
+                ),
+            },
+            expr => expr.clone(),
+        }
+    }
+
     fn compile_to_asm(&mut self, expr: &Expr) -> Vec<String> {
         todo!()
+    }
+}
+
+fn reduce_consts(expr: &Expr) -> Expr {
+    fn is_similar_ops(ch0: char, ch1: char) -> bool {
+        matches!((ch0, ch1), ('+' | '-', '+' | '-') | ('*' | '/', '*' | '/'))
+    }
+    fn binary(left: &Expr, op: &char, right: &Expr) -> Expr {
+        Expr::Binary(
+            reduce_consts(left).boxed(),
+            *op,
+            reduce_consts(right).boxed(),
+        )
+    }
+
+    match expr {
+        Expr::Binary(left, op, right) => match (&**left, &**right) {
+            (Expr::Num(l_num), Expr::Num(r_num)) => {
+                let num = match op {
+                    '+' => *l_num + *r_num,
+                    '-' => *l_num - *r_num,
+                    '*' => *l_num * *r_num,
+                    '/' => *l_num / *r_num,
+                    _ => panic!("Invalid operation!"),
+                };
+                Expr::Num(num)
+            }
+            (left, right) => binary(left, op, right),
+        },
+        expr => expr.clone(),
     }
 }
 
@@ -225,15 +280,15 @@ mod tests {
 
     #[test]
     fn reduce_consts() {
-        let program = "[ a b ] a*a + 3*3 - 1";
+        let program = "[ a b ] a*a + 3*3";
         let expected_expr = Binary(
             Binary(Var(0).boxed(), '*', Var(0).boxed()).boxed(),
             '+',
-            Num(8).boxed(),
+            Num(9).boxed(),
         );
         let mut compiler = Compiler::new();
         let mut expr = compiler.map_to_expression(program);
-        compiler.reduce_consts(&mut expr);
+        compiler.reduce_consts_mut(&mut expr);
         assert_eq!(expr, expected_expr)
     }
 
