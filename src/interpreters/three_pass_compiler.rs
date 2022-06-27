@@ -151,25 +151,56 @@ impl Compiler {
     }
 
     fn compile(&mut self, program: &str) -> Vec<String> {
-        let ast = self.pass1(program);
-        let ast = self.pass2(&ast);
-        self.pass3(&ast)
+        let mut expr = self.map_to_expression(program);
+        self.reduce_consts(&mut expr);
+        self.compile_to_asm(&expr)
     }
 
-    // Compile to ast
-    fn pass1(&mut self, program: &str) -> Expr {
+    fn map_to_expression(&mut self, program: &str) -> Expr {
         let tokens = self.tokenize(program);
         let mut parser = Parser::new(tokens.into_iter());
         parser.parse()
     }
 
-    // Reduce constants
-    fn pass2(&mut self, ast: &Expr) -> Expr {
-        ast.clone()
+//    fn reduce_consts_mut_iter(&mut self, expr: &mut Expr) -> Expr {
+//        let mut stack = vec![expr];
+//        while let Some(expr) = stack.pop() {
+//            if let Expr::Binary(left, op, right) = expr {
+//                match (&mut **left, &mut **right) {
+//                    (Expr::Num(num0), Expr::Num(num1)) => {
+//                        *expr = Expr::Num(0);
+//                    }
+//                    (left, right) => {
+//                        stack.push(left);
+//                        stack.push(right);
+//                    }
+//                }
+//            };
+//        }
+//    }
+
+    fn reduce_consts(&mut self, expr: &mut Expr) {
+        if let Expr::Binary(left, op, right) = expr {
+            match (&mut **left, &mut **right) {
+                (Expr::Num(l_num), Expr::Num(r_num)) => {
+                    let num = match op {
+                        '+' => *l_num + *r_num,
+                        '-' => *l_num - *r_num,
+                        '*' => *l_num * *r_num,
+                        '/' => *l_num / *r_num,
+                        _ => panic!("Invalid operation!"),
+                    };
+                    *expr = Expr::Num(num);
+                }
+                (left, right) => {
+                    self.reduce_consts(left);
+                    self.reduce_consts(right);
+                }
+            }
+        }
     }
 
-    // Compiling ast
-    fn pass3(&mut self, ast: &Expr) -> Vec<String> {
+    fn compile_to_asm(&mut self, expr: &Expr) -> Vec<String> {
         todo!()
     }
 }
@@ -178,24 +209,32 @@ impl Compiler {
 mod tests {
     use super::*;
     use crate::interpreters::three_pass_compiler::Expr::{Binary, Num, Var};
-    use parameterized::ide;
-    use test_case::test_case;
 
     #[test]
-    fn pass1() {
-        fn test(program: &str, expected_ast: Expr) {
-            let mut compiler = Compiler::new();
-            let ast = compiler.pass1(program);
-            assert_eq!(ast, expected_ast)
-        }
-
+    fn map_to_expression() {
         let program = "[ a b ] a*a + b*b";
         let expected_expr = Binary(
             Binary(Var(0).boxed(), '*', Var(0).boxed()).boxed(),
             '+',
             Binary(Var(1).boxed(), '*', Var(1).boxed()).boxed(),
         );
-        test(program, expected_expr)
+        let mut compiler = Compiler::new();
+        let expr = compiler.map_to_expression(program);
+        assert_eq!(expr, expected_expr)
+    }
+
+    #[test]
+    fn reduce_consts() {
+        let program = "[ a b ] a*a + 3*3 - 1";
+        let expected_expr = Binary(
+            Binary(Var(0).boxed(), '*', Var(0).boxed()).boxed(),
+            '+',
+            Num(8).boxed(),
+        );
+        let mut compiler = Compiler::new();
+        let mut expr = compiler.map_to_expression(program);
+        compiler.reduce_consts(&mut expr);
+        assert_eq!(expr, expected_expr)
     }
 
     #[test]
