@@ -163,6 +163,7 @@ impl Compiler {
     }
 
     /// Reduce consts
+    // NOTE: there is possibility to optimise complex cases like (1 + a) + 2
     fn pass2(&mut self, ast: &Ast) -> Ast {
         match ast {
             Ast::BinOp(op, left, right) => {
@@ -202,16 +203,23 @@ impl Compiler {
     /// - "AD"       add R1 to R0 and put the result in R0
     /// - "SU"       subtract R1 from R0 and put the result in R0
     /// - "MU"       multiply R0 by R1 and put the result in R0
-    /// - "DI"       divide R0 by R1 and put the result in R0
+    /// - "DI"       divide R0 by R1 and put the result in R0    
     fn pass3(&mut self, ast: &Ast) -> Vec<String> {
         fn compile_rec(asm: &mut Vec<String>, ast: &Ast) {
             match ast {
                 Ast::BinOp(op, left, right) => {
+                    let is_first_un_op = matches!(&**left, Ast::UnOp(_, _));
                     compile_rec(asm, &**left);
-                    asm.push("PU".to_string());
+                    if is_first_un_op {
+                        asm.push("SW".to_string());
+                    } else {
+                        asm.push("PU".to_string());
+                    }
                     compile_rec(asm, &**right);
                     asm.push("SW".to_string());
-                    asm.push("PO".to_string());
+                    if !is_first_un_op {
+                        asm.push("PO".to_string());
+                    }
                     let asm_op = match &**op {
                         "+" => "AD",
                         "-" => "SU",
@@ -288,8 +296,8 @@ mod tests {
         let args = vec![1, 0];
         let expected_ans = 55;
         let expected_asm = [
-            "IM 5", "PU", "AR 1", "SW", "PO", "AD", "PU", "IM 10", "PU", "AR 0", "SW", "PO", "AD",
-            "SW", "PO", "MU",
+            "IM 5", "SW", "AR 1", "SW", "AD", "PU", "IM 10",
+            "SW", "AR 0", "SW", "AD", "SW", "PO", "MU",
         ]
         .map(|str| str.to_string())
         .to_vec();
