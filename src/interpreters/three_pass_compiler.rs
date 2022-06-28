@@ -1,19 +1,23 @@
 // https://www.codewars.com/kata/5265b0885fda8eac5900093b/train/rust
 
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::btree_map::IntoKeys;
 use std::collections::HashMap;
 use std::iter::Peekable;
+use std::ops::DerefMut;
+use std::rc::Rc;
 
 // TODO: rewrite to ast method
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum Expr {
-    Binary(Box<Expr>, char, Box<Expr>),
+enum Ast {
+    BinOp(String, Box<Ast>, Box<Ast>),
+    UnOp(String, i32),
     Var(usize),
     Num(i32),
 }
 
-impl Expr {
+impl Ast {
     fn boxed(self) -> Box<Self> {
         Box::new(self)
     }
@@ -23,7 +27,7 @@ struct Parser<I>
 where
     I: Iterator<Item = String> + Clone,
 {
-    arg_to_index: HashMap<String, usize>,
+    arg_to_index: HashMap<String, i32>,
     tokens: Peekable<I>,
 }
 
@@ -38,13 +42,13 @@ where
         }
     }
 
-    // Syntax
-    //  function   ::= '[' arg-list ']' expression
-    //  arg-list   ::= variable*
-    //  expression ::= term ( '+' | '-' term )*
-    //  term       ::= factor ( '*' | '/' factor )*
-    //  factor     ::= number | variable | '(' expression ')'
-    pub fn parse(&mut self) -> Expr {
+    /// Syntax
+    /// - function   ::= '[' arg-list ']' expression
+    /// - arg-list   ::= variable*
+    /// - expression ::= term ( '+' | '-' term )*
+    /// - term       ::= factor ( '*' | '/' factor )*
+    /// - factor     ::= number | variable | '(' expression ')'
+    pub fn parse(&mut self) -> Ast {
         self.tokens.next_if_eq("[").expect("Invalid arg-list!");
         for index_of_arg in 0.. {
             let arg = self.tokens.next().expect("Invalid arg-list!");
@@ -56,16 +60,16 @@ where
         self.term()
     }
 
-    fn term(&mut self) -> Expr {
+    fn term(&mut self) -> Ast {
         let mut left = self.factor();
         loop {
             match self.tokens.peek() {
                 None => break left,
                 Some(op) => match &**op {
                     ch @ ("+" | "-") => {
-                        let ch: char = ch.parse().unwrap();
+                        let op = ch.to_string();
                         self.tokens.next();
-                        left = Expr::Binary(left.boxed(), ch, self.factor().boxed())
+                        left = Ast::BinOp(op, left.boxed(), self.factor().boxed())
                     }
                     _ => break left,
                 },
@@ -73,16 +77,16 @@ where
         }
     }
 
-    fn factor(&mut self) -> Expr {
+    fn factor(&mut self) -> Ast {
         let mut left = self.primary();
         loop {
             match self.tokens.peek() {
                 None => break left,
                 Some(op) => match &**op {
                     ch @ ("*" | "/") => {
-                        let ch: char = ch.parse().unwrap();
+                        let op = ch.to_string();
                         self.tokens.next();
-                        left = Expr::Binary(left.boxed(), ch, self.primary().boxed())
+                        left = Ast::BinOp(op, left.boxed(), self.primary().boxed())
                     }
                     _ => break left,
                 },
@@ -90,7 +94,7 @@ where
         }
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Ast {
         let token = self.tokens.next().expect("Invalid ending!");
         if "(" == token {
             let term = self.term();
@@ -101,10 +105,10 @@ where
             panic!("Invalid paren!")
         }
         if let Ok(num) = token.parse::<i32>() {
-            return Expr::Num(num);
+            return Ast::UnOp("imm".to_string(), num);
         }
         if let Some(index) = self.arg_to_index.get(&token) {
-            return Expr::Var(*index);
+            return Ast::UnOp("arg".to_string(), *index);
         }
         panic!("Invalid token! {token}")
     }
@@ -117,9 +121,6 @@ impl Compiler {
         Compiler {}
     }
 
-    // TODO: use &str
-    // TODO: rename to scan and use batching method, return lazy iterator
-    // TODO: use simple tokens
     fn tokenize(&self, program: &str) -> Vec<String> {
         let mut tokens: Vec<String> = vec![];
 
@@ -152,144 +153,109 @@ impl Compiler {
     }
 
     fn compile(&mut self, program: &str) -> Vec<String> {
-        let mut expr = self.map_to_expression(program);
-        self.reduce_consts_mut(&mut expr);
-        self.compile_to_asm(&expr)
+        let ast = self.pass1(program);
+        let ast = self.pass2(&ast);
+        self.pass3(&ast)
     }
 
-    fn map_to_expression(&mut self, program: &str) -> Expr {
+    /// Compile to ast
+    fn pass1(&mut self, program: &str) -> Ast {
         let tokens = self.tokenize(program);
         let mut parser = Parser::new(tokens.into_iter());
         parser.parse()
     }
 
-    //    fn reduce_consts_mut_iter(&mut self, expr: &mut Expr) {
-    //        let mut stack = vec![expr];
-    //        while let Some(expr) = stack.pop() {
-    //            if let Expr::Binary(left, op, right) = expr {
-    //                match (&mut **left, &mut **right) {
-    //                    (Expr::Num(num0), Expr::Num(num1)) => {
-    //                        *expr = Expr::Num(0);
-    //                        continue
-    //                    }
-    //                    (left, right) => {
-    //                        stack.push(left);
-    //                        stack.push(right);
-    //                    }
-    //                }
-    //            };
-    //        }
-    //    }
-
-    fn reduce_consts_mut(&mut self, expr: &mut Expr) {
-        if let Expr::Binary(left, op, right) = expr {
-            match (&mut **left, &mut **right) {
-                (Expr::Num(l_num), Expr::Num(r_num)) => {
-                    let num = match op {
-                        '+' => *l_num + *r_num,
-                        '-' => *l_num - *r_num,
-                        '*' => *l_num * *r_num,
-                        '/' => *l_num / *r_num,
+    /// Reduce consts
+    fn pass2(&mut self, ast: &Ast) -> Ast {
+        match ast {
+            Ast::BinOp(op, left, right) => match (&**left, &**right) {
+                (Ast::UnOp(l_code, l_num), Ast::UnOp(r_code, r_num))
+                    if l_code == "imm" && r_code == "imm" =>
+                {
+                    let num = match &**op {
+                        "+" => l_num + r_num,
+                        "-" => l_num - r_num,
+                        "*" => l_num * r_num,
+                        "/" => l_num / r_num,
                         _ => panic!("Invalid operation!"),
                     };
-                    *expr = Expr::Num(num);
-                },
-                (left, right) => {
-                    self.reduce_consts_mut(left);
-                    self.reduce_consts_mut(right);
+                    let string = "imm".to_string();
+                    Ast::UnOp(string, num)
                 }
-            }
-        }
-    }
-
-    fn reduce_consts(&mut self, expr: &Expr) -> Expr {
-        match expr {
-            Expr::Binary(left, op, right) => match (&**left, &**right) {
-                (Expr::Num(l_num), Expr::Num(r_num)) => {
-                    let num = match op {
-                        '+' => *l_num + *r_num,
-                        '-' => *l_num - *r_num,
-                        '*' => *l_num * *r_num,
-                        '/' => *l_num / *r_num,
-                        _ => panic!("Invalid operation!"),
-                    };
-                    Expr::Num(num)
-                }
-                (left, right) => Expr::Binary(
-                    self.reduce_consts(left).boxed(),
-                    *op,
-                    self.reduce_consts(right).boxed(),
+                (left, right) => Ast::BinOp(
+                    op.clone(),
+                    self.pass2(left).boxed(),
+                    self.pass2(right).boxed(),
                 ),
             },
-            expr => expr.clone(),
+            ast => ast.clone(),
         }
     }
 
-    fn compile_to_asm(&mut self, expr: &Expr) -> Vec<String> {
+    /// Compile to asm
+    /// - "IM n"     load the constant value n into R0
+    /// - "AR n"     load the n-th input argument into R0
+    /// - "SW"       swap R0 and R1
+    ///
+    /// 
+    /// - "PU"       push R0 onto the stack
+    /// - "PO"       pop the top value off of the stack into R0
+    /// 
+    /// 
+    /// - "AD"       add R1 to R0 and put the result in R0
+    /// - "SU"       subtract R1 from R0 and put the result in R0
+    /// - "MU"       multiply R0 by R1 and put the result in R0
+    /// - "DI"       divide R0 by R1 and put the result in R0
+    fn pass3(&mut self, ast: &Ast) -> Vec<String> {
         todo!()
-    }
-}
-
-fn reduce_consts(expr: &Expr) -> Expr {
-    fn is_similar_ops(ch0: char, ch1: char) -> bool {
-        matches!((ch0, ch1), ('+' | '-', '+' | '-') | ('*' | '/', '*' | '/'))
-    }
-    fn binary(left: &Expr, op: &char, right: &Expr) -> Expr {
-        Expr::Binary(
-            reduce_consts(left).boxed(),
-            *op,
-            reduce_consts(right).boxed(),
-        )
-    }
-
-    match expr {
-        Expr::Binary(left, op, right) => match (&**left, &**right) {
-            (Expr::Num(l_num), Expr::Num(r_num)) => {
-                let num = match op {
-                    '+' => *l_num + *r_num,
-                    '-' => *l_num - *r_num,
-                    '*' => *l_num * *r_num,
-                    '/' => *l_num / *r_num,
-                    _ => panic!("Invalid operation!"),
-                };
-                Expr::Num(num)
-            }
-            (left, right) => binary(left, op, right),
-        },
-        expr => expr.clone(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interpreters::three_pass_compiler::Expr::{Binary, Num, Var};
+    use crate::interpreters::three_pass_compiler::Ast::{BinOp, Num, UnOp, Var};
 
     #[test]
-    fn map_to_expression() {
+    fn pass1_map_to_expression() {
         let program = "[ a b ] a*a + b*b";
-        let expected_expr = Binary(
-            Binary(Var(0).boxed(), '*', Var(0).boxed()).boxed(),
-            '+',
-            Binary(Var(1).boxed(), '*', Var(1).boxed()).boxed(),
+        let expected_ast = BinOp(
+            "+".to_string(),
+            BinOp(
+                "*".to_string(),
+                UnOp("arg".to_string(), 0).boxed(),
+                UnOp("arg".to_string(), 0).boxed(),
+            )
+            .boxed(),
+            BinOp(
+                "*".to_string(),
+                UnOp("arg".to_string(), 1).boxed(),
+                UnOp("arg".to_string(), 1).boxed(),
+            )
+            .boxed(),
         );
         let mut compiler = Compiler::new();
-        let expr = compiler.map_to_expression(program);
-        assert_eq!(expr, expected_expr)
+        let ast = compiler.pass1(program);
+        assert_eq!(ast, expected_ast)
     }
 
     #[test]
-    fn reduce_consts() {
+    fn pass2_reduce_consts() {
         let program = "[ a b ] a*a + 3*3";
-        let expected_expr = Binary(
-            Binary(Var(0).boxed(), '*', Var(0).boxed()).boxed(),
-            '+',
-            Num(9).boxed(),
+        let expected_ast = BinOp(
+            "+".to_string(),
+            BinOp(
+                "*".to_string(),
+                UnOp("arg".to_string(), 0).boxed(),
+                UnOp("arg".to_string(), 0).boxed(),
+            )
+            .boxed(),
+            UnOp("imm".to_string(), 9).boxed(),
         );
         let mut compiler = Compiler::new();
-        let mut expr = compiler.map_to_expression(program);
-        compiler.reduce_consts_mut(&mut expr);
-        assert_eq!(expr, expected_expr)
+        let ast = compiler.pass1(program);
+        let ast = compiler.pass2(&ast);
+        assert_eq!(ast, expected_ast)
     }
 
     #[test]

@@ -163,8 +163,7 @@ impl Interpreter {
             Expr::Grouping(expr) => self.eval(expr),
             Expr::Num(num) => Ok(*num),
             Expr::Var(fn_identifier) => self.vars.get(fn_identifier)
-                .map(|val| val.last())
-                .flatten()
+                .and_then(|val| val.last())
                 .cloned()
                 .ok_or(format!("ERROR: Invalid variable identifier '{fn_identifier:?}'")),
             Expr::Fn {args: expr_args, identifier} => {
@@ -214,12 +213,12 @@ impl<'a,T> Parser<'a, T>
         Parser{ tokens: tokens.peekable(), funcs }
     }
 
-    // statement      → "fn" fn_identifier "=>" expression | (identifier "=")? expression ;
-    // expression     → term | fn_identifier (expression)*;
-    // term           → factor ( ( "-" | "+" ) factor )* ;
-    // factor         → unary ( ( "/" | "*" ) unary )* ;
-    // unary          → "-" unary | primary ;
-    // primary        → "(" expression ")" | identifier | number;
+    /// - statement      → "fn" fn_identifier "=>" expression | (identifier "=")? expression ;
+    /// - expression     → term | fn_identifier (expression)*;
+    /// - term           → factor ( ( "-" | "+" ) factor )* ;
+    /// - factor         → unary ( ( "/" | "*" ) unary )* ;
+    /// - unary          → "-" unary | primary ;
+    /// - primary        → "(" expression ")" | identifier | number;
     fn parse(&mut self) -> Result<Stmt, String> {
         let expr = self.stmt();
         return match self.tokens.next() {
