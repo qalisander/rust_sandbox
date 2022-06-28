@@ -1,20 +1,15 @@
 // https://www.codewars.com/kata/5265b0885fda8eac5900093b/train/rust
 
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::btree_map::IntoKeys;
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::ops::DerefMut;
-use std::rc::Rc;
 
-// TODO: rewrite to ast method
+const IMM: &str = "imm";
+const ARG: &str = "arg";
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Ast {
     BinOp(String, Box<Ast>, Box<Ast>),
     UnOp(String, i32),
-    Var(usize),
-    Num(i32),
 }
 
 impl Ast {
@@ -105,14 +100,16 @@ where
             panic!("Invalid paren!")
         }
         if let Ok(num) = token.parse::<i32>() {
-            return Ast::UnOp("imm".to_string(), num);
+            return Ast::UnOp(IMM.to_string(), num);
         }
         if let Some(index) = self.arg_to_index.get(&token) {
-            return Ast::UnOp("arg".to_string(), *index);
+            return Ast::UnOp(ARG.to_string(), *index);
         }
         panic!("Invalid token! {token}")
     }
 }
+
+const WORDS: &'static str = "hello rust!";
 
 struct Compiler {}
 
@@ -170,7 +167,7 @@ impl Compiler {
         match ast {
             Ast::BinOp(op, left, right) => match (&**left, &**right) {
                 (Ast::UnOp(l_code, l_num), Ast::UnOp(r_code, r_num))
-                    if l_code == "imm" && r_code == "imm" =>
+                    if l_code == IMM && r_code == IMM =>
                 {
                     let num = match &**op {
                         "+" => l_num + r_num,
@@ -179,7 +176,7 @@ impl Compiler {
                         "/" => l_num / r_num,
                         _ => panic!("Invalid operation!"),
                     };
-                    let string = "imm".to_string();
+                    let string = IMM.to_string();
                     Ast::UnOp(string, num)
                 }
                 (left, right) => Ast::BinOp(
@@ -197,24 +194,51 @@ impl Compiler {
     /// - "AR n"     load the n-th input argument into R0
     /// - "SW"       swap R0 and R1
     ///
-    /// 
+    ///
     /// - "PU"       push R0 onto the stack
     /// - "PO"       pop the top value off of the stack into R0
-    /// 
-    /// 
+    ///
+    ///
     /// - "AD"       add R1 to R0 and put the result in R0
     /// - "SU"       subtract R1 from R0 and put the result in R0
     /// - "MU"       multiply R0 by R1 and put the result in R0
     /// - "DI"       divide R0 by R1 and put the result in R0
     fn pass3(&mut self, ast: &Ast) -> Vec<String> {
-        todo!()
+        fn compile_rec(asm: &mut Vec<String>, ast: &Ast) {
+            match ast {
+                Ast::BinOp(op, left, right) => {
+                    compile_rec(asm, &**left);
+                    asm.push("PU".to_string());
+                    compile_rec(asm, &**right);
+                    asm.push("SW".to_string());
+                    asm.push("PO".to_string());
+                    let asm_op = match &**op {
+                        "+" => "AD",
+                        "-" => "SU",
+                        "*" => "MU",
+                        "/" => "DI",
+                        _ => unreachable!(),
+                    };
+                    asm.push(asm_op.to_string())
+                }
+                Ast::UnOp(code, num) => match &**code {
+                    IMM => asm.push(format!("IM {num}")),
+                    ARG => asm.push(format!("AR {num}")),
+                    _ => unreachable!(),
+                },
+            }
+        }
+
+        let mut ans = vec![];
+        compile_rec(&mut ans, ast);
+        ans
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::interpreters::three_pass_compiler::Ast::{BinOp, Num, UnOp, Var};
+    use crate::interpreters::three_pass_compiler::Ast::{BinOp, UnOp};
 
     #[test]
     fn pass1_map_to_expression() {
@@ -223,14 +247,14 @@ mod tests {
             "+".to_string(),
             BinOp(
                 "*".to_string(),
-                UnOp("arg".to_string(), 0).boxed(),
-                UnOp("arg".to_string(), 0).boxed(),
+                UnOp(ARG.to_string(), 0).boxed(),
+                UnOp(ARG.to_string(), 0).boxed(),
             )
             .boxed(),
             BinOp(
                 "*".to_string(),
-                UnOp("arg".to_string(), 1).boxed(),
-                UnOp("arg".to_string(), 1).boxed(),
+                UnOp(ARG.to_string(), 1).boxed(),
+                UnOp(ARG.to_string(), 1).boxed(),
             )
             .boxed(),
         );
@@ -246,16 +270,33 @@ mod tests {
             "+".to_string(),
             BinOp(
                 "*".to_string(),
-                UnOp("arg".to_string(), 0).boxed(),
-                UnOp("arg".to_string(), 0).boxed(),
+                UnOp(ARG.to_string(), 0).boxed(),
+                UnOp(ARG.to_string(), 0).boxed(),
             )
             .boxed(),
-            UnOp("imm".to_string(), 9).boxed(),
+            UnOp(IMM.to_string(), 9).boxed(),
         );
         let mut compiler = Compiler::new();
         let ast = compiler.pass1(program);
         let ast = compiler.pass2(&ast);
         assert_eq!(ast, expected_ast)
+    }
+
+    #[test]
+    fn pass3_reduce_consts() {
+        let program = "[ a b ] (5 + b) * (10 + a)";
+        let args = vec![1, 0];
+        let expected_ans = 55;
+        let expected_asm = [
+            "IM 5", "PU", "AR 1", "SW", "PO", "AD", "PU", "IM 10", 
+            "PU", "AR 0", "SW", "PO", "AD", "SW", "PO", "MU",
+        ]
+        .map(|str| str.to_string())
+        .to_vec();
+        let mut compiler = Compiler::new();
+        let asm = compiler.compile(program);
+        assert_eq!(asm, expected_asm);
+        assert_eq!(simulate(asm, args), expected_ans);
     }
 
     #[test]
