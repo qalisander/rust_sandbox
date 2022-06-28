@@ -7,7 +7,6 @@
 //#![feature(in_band_lifetimes)]
 
 pub mod common_denominators;
-pub mod common_denominators_2;
 mod decimal_to_factorial_and_back;
 pub mod fix_pipes;
 pub mod int_partitions;

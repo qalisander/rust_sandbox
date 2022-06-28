@@ -126,7 +126,7 @@ pub fn solve_nonogram<const T: usize>(
     }
 }
 
-pub(crate) fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: BitSet, next_banned_bits: BitSet) -> Box<dyn Iterator<Item=BitVec> + 'a> {
+pub(super) fn get_permutations<'a, const T: usize >(clues: &'a [u8], next_mandatory_bits: BitSet, next_banned_bits: BitSet) -> Box<dyn Iterator<Item=BitVec> + 'a> {
     let permutation = BitSet::with_capacity(T);
     return get_permutations_rec::<T>(permutation, clues, 0, next_mandatory_bits, next_banned_bits);
 

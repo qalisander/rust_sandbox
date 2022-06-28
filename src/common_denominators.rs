@@ -1,3 +1,4 @@
+//https://www.codewars.com/kata/54d7660d2daf68c619000d95
 fn convert_fracts(input: Vec<(i64, i64)>) -> Vec<(i64, i64)> {
     let input_nrml = input
         .into_iter()
@@ -68,3 +69,22 @@ mod test {
         assert_eq!(lcm(1300, 1310), 170300)
     }
 }
+
+// NOTE: different solution
+// NOTE: can be used gcg and lcd of integer types
+//fn gcd(a: i64, b: i64) -> i64 {
+//    if b == 0 {
+//        a
+//    } else {
+//        gcd(b, a % b)
+//    }
+//}
+//fn lcm(a: i64, b: i64) -> i64 {
+//    a / gcd(a, b) * b
+//}
+//fn convert_fracts(l: Vec<(i64, i64)>) -> Vec<(i64, i64)> {
+//    let d = l
+//        .iter()
+//        .fold(1, |acc, &(num, den)| lcm(acc, den / gcd(num, den)));
+//    l.iter().map(|&(num, den)| (num * d / den, d)).collect()
+//}

@@ -1,2 +1,2 @@
-pub mod fix_pipes_my;
-pub mod fix_pipes_1;
+pub mod fix_pipes_sol;
+mod fix_pipes_tests;

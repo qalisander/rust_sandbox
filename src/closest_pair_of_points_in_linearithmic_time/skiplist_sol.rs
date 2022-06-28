@@ -41,7 +41,7 @@ impl<T: Float + Default + Debug> From<T> for OrdByLastFloatContainer<T> {
     }
 }
 
-fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
+pub(super) fn closest_pair(points: &[(f64, f64)]) -> ((f64, f64), (f64, f64)) {
     let points_sorted_by_first = points
         .iter()
         .sorted_by(|l, r| l.0.partial_cmp(&r.0).unwrap())

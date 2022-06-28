@@ -188,7 +188,7 @@ impl State {
     }
 }
 
-pub fn blox_solver(puzzle: &[&str]) -> String {
+pub(super) fn blox_solver(puzzle: &[&str]) -> String {
     let mut field = Field::new(puzzle);
     let begin_state = State {
         index: (field.begin.0 as isize, field.begin.1 as isize),
@@ -241,7 +241,7 @@ pub fn blox_solver(puzzle: &[&str]) -> String {
     ans.chars().rev().collect()
 }
 
-//NOTE: smn's short solution
+//NOTE: smb's short solution
 //mod blox {
 //    use std::collections::VecDeque;
 //    use bit_set::BitSet;

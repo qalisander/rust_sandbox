@@ -1,2 +1,1 @@
-pub mod spiral_my;
-pub mod spiral_2;
+pub mod spiral_sol;

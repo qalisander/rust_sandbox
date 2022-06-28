@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rust_sandbox::nonogram_solvers::{nonogram_solver_bitsets, nonogram_solver_slice};
-use rust_sandbox::nonogram_solvers::test::CLUES_15;
+use rust_sandbox::nonogram_solvers::tests::CLUES_15;
 
 //https://bheisler.github.io/criterion.rs/book/user_guide/advanced_configuration.html
 

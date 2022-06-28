@@ -1,2 +1,3 @@
-mod skiplist_sol;
-mod btreemap_sol;
+pub mod skiplist_sol;
+pub mod btreemap_sol;
+mod tests;
