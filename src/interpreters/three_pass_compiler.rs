@@ -165,26 +165,26 @@ impl Compiler {
     /// Reduce consts
     fn pass2(&mut self, ast: &Ast) -> Ast {
         match ast {
-            Ast::BinOp(op, left, right) => match (&**left, &**right) {
-                (Ast::UnOp(l_code, l_num), Ast::UnOp(r_code, r_num))
-                    if l_code == IMM && r_code == IMM =>
-                {
-                    let num = match &**op {
-                        "+" => l_num + r_num,
-                        "-" => l_num - r_num,
-                        "*" => l_num * r_num,
-                        "/" => l_num / r_num,
-                        _ => panic!("Invalid operation!"),
-                    };
-                    let string = IMM.to_string();
-                    Ast::UnOp(string, num)
+            Ast::BinOp(op, left, right) => {
+                let left = self.pass2(&**left);
+                let right = self.pass2(&**right);
+                match (left, right) {
+                    (Ast::UnOp(l_code, l_num), Ast::UnOp(r_code, r_num))
+                        if l_code == IMM && r_code == IMM =>
+                    {
+                        let num = match &**op {
+                            "+" => l_num + r_num,
+                            "-" => l_num - r_num,
+                            "*" => l_num * r_num,
+                            "/" => l_num / r_num,
+                            _ => panic!("Invalid operation!"),
+                        };
+                        let string = IMM.to_string();
+                        Ast::UnOp(string, num)
+                    }
+                    (left, right) => Ast::BinOp(op.clone(), left.boxed(), right.boxed()),
                 }
-                (left, right) => Ast::BinOp(
-                    op.clone(),
-                    self.pass2(left).boxed(),
-                    self.pass2(right).boxed(),
-                ),
-            },
+            }
             ast => ast.clone(),
         }
     }
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn pass2_reduce_consts() {
-        let program = "[ a b ] a*a + 3*3";
+        let program = "[ a b ] a*a + 3*3*3";
         let expected_ast = BinOp(
             "+".to_string(),
             BinOp(
@@ -274,7 +274,7 @@ mod tests {
                 UnOp(ARG.to_string(), 0).boxed(),
             )
             .boxed(),
-            UnOp(IMM.to_string(), 9).boxed(),
+            UnOp(IMM.to_string(), 27).boxed(),
         );
         let mut compiler = Compiler::new();
         let ast = compiler.pass1(program);
@@ -288,8 +288,8 @@ mod tests {
         let args = vec![1, 0];
         let expected_ans = 55;
         let expected_asm = [
-            "IM 5", "PU", "AR 1", "SW", "PO", "AD", "PU", "IM 10", 
-            "PU", "AR 0", "SW", "PO", "AD", "SW", "PO", "MU",
+            "IM 5", "PU", "AR 1", "SW", "PO", "AD", "PU", "IM 10", "PU", "AR 0", "SW", "PO", "AD",
+            "SW", "PO", "MU",
         ]
         .map(|str| str.to_string())
         .to_vec();
